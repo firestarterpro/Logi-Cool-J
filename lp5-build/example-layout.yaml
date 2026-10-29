@@ -1,0 +1,38 @@
+# Minimal example. Copy to keypad-layout.yaml (or build it in the builder UI).
+profile_name: "Example Keypad"
+profile_page_count: 2
+page_1:
+  name: "Home"
+  buttons:
+    - id: 0
+      label: "Cline"
+      steps:
+        - key: "Ctrl+Alt+L"
+    - id: 1
+      label: "Claude"
+      steps:
+        - url: "https://claude.ai/new"
+    - id: 2
+      label: "git status"
+      steps:
+        - text: "git status"
+        - key: "Return"
+    - id: 3
+      label: "Terminal"
+      steps:
+        - open: "wt.exe"
+    - id: 8
+      label: "Page 2"
+      steps:
+        - go_to_page: 2
+page_2:
+  name: "Windows"
+  buttons:
+    - id: 0
+      label: "Screenshot"
+      steps:
+        - key: "Win+Shift+S"
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
