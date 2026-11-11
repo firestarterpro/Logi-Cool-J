@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Everything the plugin does that does not need the Logi SDK: loading and checking keys.yaml,
+       path variables, key names, step planning and running, and watching the file. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LogiCoolJ.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+
+</Project>

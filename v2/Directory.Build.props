@@ -1,0 +1,17 @@
+<Project>
+  <!-- Shared settings for every project under v2. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Keep builds light on a shared 16 GB laptop: no lingering compiler server. -->
+    <UseSharedCompilation>false</UseSharedCompilation>
+    <!-- LogiPluginTool 6.1.4 is the last .NET 8 release; its PluginApi.dll is what we compile against.
+         The installed Logi Plugin Service (6.4.x) supplies its own PluginApi at runtime. -->
+    <LogiPluginToolVersion>6.1.4.22672</LogiPluginToolVersion>
+    <NuGetCacheRoot Condition="'$(NUGET_PACKAGES)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NUGET_PACKAGES)'))</NuGetCacheRoot>
+    <NuGetCacheRoot Condition="'$(NuGetCacheRoot)' == ''">$(UserProfile)\.nuget\packages\</NuGetCacheRoot>
+    <PluginApiDir Condition="'$(PluginApiDir)' == ''">$(NuGetCacheRoot)logiplugintool\$(LogiPluginToolVersion)\tools\net8.0\any\</PluginApiDir>
+  </PropertyGroup>
+</Project>

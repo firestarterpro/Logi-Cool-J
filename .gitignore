@@ -4,3 +4,10 @@ lp5-build/keypad-layout.yaml
 !lp5-build/template.lp5
 __pycache__/
 node_modules/
+
+# v2 build output
+v2/bin/
+v2/obj/
+v2/**/bin/
+v2/**/obj/
+v2/dist/
