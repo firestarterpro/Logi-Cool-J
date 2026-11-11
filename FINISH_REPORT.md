@@ -1,8 +1,12 @@
 # logi-cool-j: finish report (partial, stopped on budget)
 
 Written 2026-11-11 by Claude Code (Opus 5.5), working from `CLAUDE_CODE_FINISH.md`.
-**Status: Track A done. Track B: B1 done; B2 only scaffolded (resume there); B3, B4, B5 and the Finish section not started.**
-Stopped under operating rule 9 (budget). The next session resumes at **B2** below.
+**Status: Track A, B1 and B2 done (B2's C# tests compile but could not be run here; see Smart App Control below). Remaining, one unit per fresh session, in this order: B3, B4, B5, then Finish.**
+
+## Process changes (owner, 2026-11-11)
+1. One unit per session: each later session takes the next unit in the order above, commits, updates this report and stops.
+2. The Finish section no longer includes the per-session subagent review; one review of the whole diff happens at the end, outside these sessions. Finish = README for both tracks + final FINISH_REPORT.md.
+3. Never read `logi-cool-j-builder.html` (114 KB) or other large files whole; search them with grep.
 
 ## Commits (git log, no remote)
 | Commit | Unit |
@@ -13,7 +17,8 @@ Stopped under operating rule 9 (budget). The next session resumes at **B2** belo
 | `86e41ef` | A2: builder works offline; finish the AI assist |
 | `e164cc3` | A3: converter checks the layout first; tests for every step type |
 | `7c6f805` | B1: keys.yaml with paths variables, and the migration |
-| (last) | B2 scaffold only: local LogiPluginTool manifest, `v2\Directory.Build.props`, Core `.csproj` |
+| `954fe3d` | B2 scaffold: local LogiPluginTool manifest, `v2\Directory.Build.props`, Core `.csproj` |
+| `5592c32` | B2: plugin, Core library, xUnit tests |
 
 ## Changes per unit
 - **Windows fixes (before A1).** The converter asked Pillow for `DejaVuSans-Bold.ttf`, which Windows lacks, so it could not build any `.lp5` on this PC. It now falls back to Segoe UI Bold / Arial Bold / Pillow's font. `tests\ui-smoke.js` defaults to `python` on Windows (`python3` is a Store stub), pins Playwright 1.64.1 (`tests\package.json`; matches the browsers LLM Explorer already cached), exits 1 on any FAIL.
@@ -26,6 +31,16 @@ Stopped under operating rule 9 (budget). The next session resumes at **B2** belo
 - **A2 builder.** js-yaml loads from `lib\js-yaml.min.js` (no CDN). New shared `lib\ai-assist.js`: Build/Copy prompt → paste answer → **Apply to button** (undoable; refuses secrets and unknown steps). Optional endpoint, **off by default**, takes Ollama (`/api/generate`, `/api/chat`, bare `:11434`) or any OpenAI-compatible `/chat/completions` URL (e.g. `http://localhost:8000/v3/chat/completions`); failures leave the prompt ready to copy. No API keys stored.
 - **A3 converter + tests.** `yaml2lp5.py` checks first and builds nothing on: unknown/double steps, go_to_page out of range or not alone, non-integer wait, unknown modifier (was silently dropped), secrets (never echoed). `tests\test_yaml2lp5.py` covers every step type. Built `lp5-build\MX 10-Page Layout.lp5` (10 pages, 63 macros, 8 file actions, 71 icons; git-ignored).
 - **B1.** `v2\keys.yaml` = v1 contract + `paths:` (`${name}`; moving C:\Templar Archives is one edit to `paths.templar`) + optional `color` per key + `text_mode: type|paste` (top level or per key; the clipboard option the brief asks for). `v2\migrate_keys.py` writes it from `keypad-layout.yaml` and refuses to write unless it expands back to identical steps. The converter reads keys.yaml too (paths, color, paste → `useClipboard`, `--check`), and always runs `.ps1` through pwsh.
+
+- **B2 plugin** (`v2\LogiCoolJ.sln`).
+  - `src\LogiCoolJ.Core` (no SDK dependency): `KeysLoader` (YamlDotNet; every problem has a line, page and key), the same rules as the converter plus key names the SDK can send; `PathVariables`, `SecretPatterns`; `KeyCombo` (names → `Loupedeck.VirtualKeyCode` names: digits `Key0..9`, backtick `Oem3`, `MediaPrevTrack`); `StepPlanner` (paths and `%ENV%` expanded, exe split from arguments, `.ps1` through pwsh, folders/files via ShellExecute, URIs); `StepRunner` (one macro at a time, 40 ms gap after key/text, a failing step stops that macro and is reported); `LayoutHost` (FileSystemWatcher + 2 s poll, 400 ms debounce, swaps only a valid file, keeps the last good layout, flags new errors once); `SlotPresenter` (error shown on the failing key as "keys.yaml / line N / reason", or on key 1 when the error is on another page or has no key; pressing it dismisses it, other keys keep working); `KeysLocator` (`LOGICOOLJ_KEYS`, then `keys-path.txt` beside the DLL, then parent folders).
+  - `src\LogiCoolJPlugin`: universal plugin `LogiCoolJ`. `SlotCommand` with 108 parameters: `k0..k8` follow the plugin's current page (virtual paging, primary), `p01k0..p10k8` fixed (fallback with 10 device pages), `t0..t8` read `v2\device-test.yaml` (B5 creates it). `-p:SlotForm=Actions` builds one class per slot instead (`SlotActions.g.cs`). Also `StatusCommand` (OK / error line, press = reload) and `PageCommand` (next, previous, page 1..10). Keys via `ClientApplication.SendKeyboardShortcut` (enum parsed by name at runtime), text via `NativeMethods.SendString`, paste via the SDK clipboard (restores the old clipboard text), programs via `Process.Start`. Errors also go to the plugin status in Options+ and to a Windows balloon (hidden pwsh, `NotificationScript`). Current page is saved as a plugin setting.
+  - Install safety: the generated `.link` + `loupedeck:plugin/LogiCoolJ/reload` step only runs with `-p:LinkToPluginService=true` (for B3's `Install-Plugin.ps1`). Checked after building: nothing was written to `%LOCALAPPDATA%\Logi\LogiPluginService\Plugins`. `PluginApi.dll` is not copied into the output.
+  - Output: `v2\bin\Release\` = package root (`metadata\`, `bin\LogiCoolJPlugin.dll`, `LogiCoolJ.Core.dll`, `YamlDotNet.dll`, `keys-path.txt`).
+  - `tests\LogiCoolJ.Core.Tests`: about 45 xUnit cases: loader (every step kind, each error with its line, secrets never echoed, YAML syntax, duplicate keys, path cycles, colour/text_mode/page count/duplicate ids), planning (every kind, paste mode, exe/args/quotes, `.ps1`, the real keys.yaml plans 90 keys), runner (order, waits, failure, queueing), host (keeps last good, missing file, a real file save swaps within 5 s), presenter (labels, colours, error overlay and dismiss), slot names, the Actions-form class list, key and modifier names checked against the real `Loupedeck.VirtualKeyCode`/`ModifierKey`, locator, notification quoting, palette matches the converter.
+
+## Smart App Control blocks new unsigned DLLs (found in B2)
+Smart App Control is in **enforce** mode on this PC (`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState = 1`; Code Integrity events 3033/3077/3118). It blocked the xUnit test DLL ("An Application Control policy has blocked this file", 0x800711C7), also after a rebuild under another name, so **the C# tests compile but have never run**. Verdicts are per file: `LogiCoolJPlugin.dll` and `LogiCoolJ.Core.dll` did load in pwsh, but whether the Logi Plugin Service may load them is device-only. Nothing was changed: turning Smart App Control off is the owner's decision, and on Windows 11 it cannot be turned back on without resetting Windows. Options for the owner: run the C# tests on a machine without SAC enforcement; or sign the DLLs; or decide about SAC. The Python and Playwright tests are unaffected.
 
 ## Verified (ran) vs device-only
 Ran and passing at the last commit: `python -m unittest discover -s tests` (37 tests), `node tests\ui-smoke.js` (50/50), converter on the real layout, `migrate_keys.py`, `yaml2lp5.py --check` on both layouts, every open/run path checked on disk.
@@ -49,7 +64,15 @@ Device-only (not testable here): whether Options+ accepts the imported `.lp5`; p
 ## Rollback
 `git log` → `git checkout be180f8 -- <file>` for any file, or `git reset --hard be180f8` for everything (asks nothing; owner's call). v1 layout is also in `lp5-build\keypad-layout.v1-backup.yaml`. In Options+, keep the old "MX 10-Page Layout" profile until the new import works (rename it, e.g. "MX v1").
 
-## Resume here: B2 onward (research already done)
+B2 ran: `dotnet build v2\LogiCoolJ.sln -c Release` (0 warnings, 0 errors) in both slot forms; output checked; Python tests still 37 OK. Not run: the xUnit tests (blocked, above), anything in the Logi Plugin Service.
+
+## Next units (one per session)
+- **B3**: extend `yaml2lp5.py` to write `slots.lp5` (one device page, `k0..k8` → `$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___k0`), plus `slots-actions.lp5` (`$LogiCoolJ___Loupedeck.LogiCoolJPlugin.KeyK0`, check the exact string with `ActionString`) and `slots-10pages.lp5` (fixed `pPPkK` slots, go_to_page keys as native `ChangeTouchPage`). Write `v2\Install-Plugin.ps1` (dotnet tool restore, build Release, `logiplugintool pack` + `verify`, then `logiplugintool install`, fall back to opening the `.lplug4`); do not run it. `pack`/`verify` alone are offline and safe to run.
+- **B4**: `v2\editor\keys-editor.html` using `..\..\lib\js-yaml.min.js` and `..\..\lib\ai-assist.js`, plus a Playwright test in `tests\`.
+- **B5**: `v2\device-test.yaml` (one page, one key per step type incl. arrows, backtick, media keys; the plugin's `t0..t8` slots already read it) and a native `device-test.lp5` from the converter.
+- **Finish**: README for both tracks (fix the "stable IDs" claim), final FINISH_REPORT with the device checklist (Track A first, then Track B yes/no checks 1–5 each with its fallback). No subagent review here.
+
+## SDK notes (research done in the first session)
 SDK facts checked 2026-11-11 (docs `llms-full.txt`, reflection on PluginApi 6.1.4, installed service 6.4.2.3414):
 - Do **not** keep the generated csproj's PostBuild: it writes `%LOCALAPPDATA%\Logi\LogiPluginService\Plugins\<Name>.link` and sends `loupedeck:plugin/<Name>/reload` (= installing). Gate both behind a property only `Install-Plugin.ps1` sets. Reference PluginApi with `Private=false`; `Directory.Build.props` already defines `$(PluginApiDir)` (run `dotnet tool restore` in `v2` first).
 - API: `PluginDynamicCommand` + `AddParameter(name, displayName, group)`; `RunCommand`, `GetCommandDisplayName`, `GetCommandImage` (`BitmapBuilder(size)`, `Clear(BitmapColor)`, `DrawText(text)`); `ActionImageChanged(param)`; keys via `Plugin.ClientApplication.SendKeyboardShortcut(VirtualKeyCode, ModifierKey)` (parse enum names at runtime); typing `Plugin.NativeMethods.SendString`; clipboard `ClipboardSetText/GetText`; status `OnPluginStatusChanged(PluginStatus.Warning, msg)`; settings `Try/SetPluginSetting`. Digits are `Key0..Key9`, backtick `Oem3`, `MediaPrevTrack`.
