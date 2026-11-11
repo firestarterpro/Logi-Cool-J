@@ -1,7 +1,7 @@
 # logi-cool-j: finish report (partial, stopped on budget)
 
 Written 2026-11-11 by Claude Code (Opus 5.5), working from `CLAUDE_CODE_FINISH.md`.
-**Status: Track A, B1 and B2 done (B2's C# tests compile but could not be run here; see Smart App Control below). Remaining, one unit per fresh session, in this order: B3, B4, B5, then Finish.**
+**Status: Track A, B1, B2 and B3 done (B2's C# tests compile but could not be run here; see Smart App Control below). Remaining, one unit per fresh session, in this order: B4, B5, then Finish.**
 
 ## Process changes (owner, 2026-11-11)
 1. One unit per session: each later session takes the next unit in the order above, commits, updates this report and stops.
@@ -19,6 +19,7 @@ Written 2026-11-11 by Claude Code (Opus 5.5), working from `CLAUDE_CODE_FINISH.m
 | `7c6f805` | B1: keys.yaml with paths variables, and the migration |
 | `954fe3d` | B2 scaffold: local LogiPluginTool manifest, `v2\Directory.Build.props`, Core `.csproj` |
 | `5592c32` | B2: plugin, Core library, xUnit tests |
+| `dcc39f1` | B3: `slots.lp5`, `slots-actions.lp5`, `slots-10pages.lp5` and `v2\Install-Plugin.ps1` |
 
 ## Changes per unit
 - **Windows fixes (before A1).** The converter asked Pillow for `DejaVuSans-Bold.ttf`, which Windows lacks, so it could not build any `.lp5` on this PC. It now falls back to Segoe UI Bold / Arial Bold / Pillow's font. `tests\ui-smoke.js` defaults to `python` on Windows (`python3` is a Store stub), pins Playwright 1.64.1 (`tests\package.json`; matches the browsers LLM Explorer already cached), exits 1 on any FAIL.
@@ -38,13 +39,22 @@ Written 2026-11-11 by Claude Code (Opus 5.5), working from `CLAUDE_CODE_FINISH.m
   - Install safety: the generated `.link` + `loupedeck:plugin/LogiCoolJ/reload` step only runs with `-p:LinkToPluginService=true` (for B3's `Install-Plugin.ps1`). Checked after building: nothing was written to `%LOCALAPPDATA%\Logi\LogiPluginService\Plugins`. `PluginApi.dll` is not copied into the output.
   - Output: `v2\bin\Release\` = package root (`metadata\`, `bin\LogiCoolJPlugin.dll`, `LogiCoolJ.Core.dll`, `YamlDotNet.dll`, `keys-path.txt`).
   - `tests\LogiCoolJ.Core.Tests`: about 45 xUnit cases: loader (every step kind, each error with its line, secrets never echoed, YAML syntax, duplicate keys, path cycles, colour/text_mode/page count/duplicate ids), planning (every kind, paste mode, exe/args/quotes, `.ps1`, the real keys.yaml plans 90 keys), runner (order, waits, failure, queueing), host (keeps last good, missing file, a real file save swaps within 5 s), presenter (labels, colours, error overlay and dismiss), slot names, the Actions-form class list, key and modifier names checked against the real `Loupedeck.VirtualKeyCode`/`ModifierKey`, locator, notification quoting, palette matches the converter.
+- **B3 slots profiles + installer.**
+  - Extended `lp5-build\yaml2lp5.py` with `slot_action(slot_name, actions_form=False)`, `build_slots(...)`, and `--slots` CLI mode (also auto-detects `slots.lp5`, `slots-actions.lp5`, `slots-10pages.lp5` when passed as the output path).
+  - Built all three slot profiles (written to both `lp5-build\` and `v2\`; git-ignored via `*.lp5`):
+    - `slots.lp5`: 1 device page, `k0..k8` → `$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___k0..k8` (primary virtual paging).
+    - `slots-actions.lp5`: 1 device page, `k0..k8` → `$LogiCoolJ___Loupedeck.LogiCoolJPlugin.KeyK0..KeyK8` (verified via `Loupedeck.ActionString(pluginName, actionName, null).ToString()` in `PluginApi.dll`).
+    - `slots-10pages.lp5`: 10 device pages, fixed `p01k0..p10k8` → `$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___p01k0..p10k8`, with `go_to_page` keys emitted as native `$@Generic___@ChangeTouchPage___System|<ws>|<page>`.
+  - Wrote `v2\Install-Plugin.ps1` (not run): restores local `LogiPluginTool`, builds Release with `-p:LinkToPluginService=true` (and optional `-SlotForm Parameters|Actions` / `-KeysPath`), packs + verifies `v2\dist\LogiCoolJ.lplug4`, refreshes the three slot `.lp5` profiles, runs `logiplugintool install`, and falls back to `Start-Process` on the `.lplug4`.
+  - Offline `logiplugintool pack` and `logiplugintool verify` ran and passed on `v2\dist\LogiCoolJ.lplug4`.
+  - Added converter + installer tests in `tests\test_keys_v2.py` (40 Python tests total, all passing; `node tests\ui-smoke.js` 50/50 passing).
 
 ## Smart App Control blocks new unsigned DLLs (found in B2)
 Smart App Control is in **enforce** mode on this PC (`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState = 1`; Code Integrity events 3033/3077/3118). It blocked the xUnit test DLL ("An Application Control policy has blocked this file", 0x800711C7), also after a rebuild under another name, so **the C# tests compile but have never run**. Verdicts are per file: `LogiCoolJPlugin.dll` and `LogiCoolJ.Core.dll` did load in pwsh, but whether the Logi Plugin Service may load them is device-only. Nothing was changed: turning Smart App Control off is the owner's decision, and on Windows 11 it cannot be turned back on without resetting Windows. Options for the owner: run the C# tests on a machine without SAC enforcement; or sign the DLLs; or decide about SAC. The Python and Playwright tests are unaffected.
 
 ## Verified (ran) vs device-only
-Ran and passing at the last commit: `python -m unittest discover -s tests` (37 tests), `node tests\ui-smoke.js` (50/50), converter on the real layout, `migrate_keys.py`, `yaml2lp5.py --check` on both layouts, every open/run path checked on disk.
-Device-only (not testable here): whether Options+ accepts the imported `.lp5`; pwsh-with-arguments keys; arrow, backtick and media key names; Claude/Ref Drafts launch commands; endpoint CORS with a real local server.
+Ran and passing at the last commit: `python -m unittest discover -s tests` (40 tests), `node tests\ui-smoke.js` (50/50), converter on the real layout + `--slots` into `lp5-build\` and `v2\`, `migrate_keys.py`, `yaml2lp5.py --check` on both layouts, `dotnet tool run logiplugintool -- pack` and `verify` on `v2\dist\LogiCoolJ.lplug4`, PowerShell AST syntax check on `v2\Install-Plugin.ps1`, every open/run path checked on disk.
+Device-only (not testable here): whether Options+ accepts the imported `.lp5` and slot profiles; `Install-Plugin.ps1` / `logiplugintool install`; pwsh-with-arguments keys; arrow, backtick and media key names; Claude/Ref Drafts launch commands; endpoint CORS with a real local server.
 
 ## Decisions
 1. "Open script first" read as a note on Run Script; added a To Cursor key so Run lands in Cursor.
@@ -53,6 +63,8 @@ Device-only (not testable here): whether Options+ accepts the imported `.lp5`; p
 4. AI endpoint: local servers only, no API key field.
 5. Converter refuses bad layouts instead of passing them through (same rules as the builder; secret list shared and tested).
 6. **Plugin targets .NET 8 against `PluginApi.dll` 6.1.4** from the official `LogiPluginTool` 6.1.4.22672 package (local tool in `v2\.config\dotnet-tools.json`). Reason: LogiPluginTool 6.4.2 and the `LogiPluginApi` NuGet are .NET 10 only, the installed service's PluginApi 6.4.2 is net10, and only the .NET 8 SDK is installed. The installed service already runs net8 plugins (ClaudeDesktop, LogiSmartActions, WindowsPowerToys).
+7. **Slot profiles omit `ActionImages/` for plugin slot actions** (found by inspecting `Loupedeck.Service.ApplicationProfileImages` in `LoupedeckService.dll` and stored profiles): a static `ActionImages/<action>.png` in an `.lp5` acts as a user icon override that masks the plugin's dynamic `GetCommandImage`, which would freeze labels on import. `metadata/ProfilePreview.json` still includes the 9 page-1 thumbnails for the Options+ import dialog, and `LogiCoolJ` is listed in both `ProfileInfo.json` `additionalNativePluginNames` and `metadata/AdvancedInfo.json` `additionalPluginNames`.
+8. **Slot profiles written to both `lp5-build\` and `v2\`** (both git-ignored via `*.lp5`) with distinct seeded UUIDs and display names (`MX 10-Page Layout (Slots)`, `(Slots - Actions)`, `(Slots - 10 Pages)`) so they can be imported side-by-side in Options+.
 
 ## Known issues
 - `C:\Templar Archives\stacks-attacks\tools\ai-scripts\AiScript.ps1` is on GitHub main (`adc26cf`) but **the local clone has not pulled it**: run `stacks-attacks-pull.bat` before testing the AI Scripts keys.
@@ -67,7 +79,6 @@ Device-only (not testable here): whether Options+ accepts the imported `.lp5`; p
 B2 ran: `dotnet build v2\LogiCoolJ.sln -c Release` (0 warnings, 0 errors) in both slot forms; output checked; Python tests still 37 OK. Not run: the xUnit tests (blocked, above), anything in the Logi Plugin Service.
 
 ## Next units (one per session)
-- **B3**: extend `yaml2lp5.py` to write `slots.lp5` (one device page, `k0..k8` → `$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___k0`), plus `slots-actions.lp5` (`$LogiCoolJ___Loupedeck.LogiCoolJPlugin.KeyK0`, check the exact string with `ActionString`) and `slots-10pages.lp5` (fixed `pPPkK` slots, go_to_page keys as native `ChangeTouchPage`). Write `v2\Install-Plugin.ps1` (dotnet tool restore, build Release, `logiplugintool pack` + `verify`, then `logiplugintool install`, fall back to opening the `.lplug4`); do not run it. `pack`/`verify` alone are offline and safe to run.
 - **B4**: `v2\editor\keys-editor.html` using `..\..\lib\js-yaml.min.js` and `..\..\lib\ai-assist.js`, plus a Playwright test in `tests\`.
 - **B5**: `v2\device-test.yaml` (one page, one key per step type incl. arrows, backtick, media keys; the plugin's `t0..t8` slots already read it) and a native `device-test.lp5` from the converter.
 - **Finish**: README for both tracks (fix the "stable IDs" claim), final FINISH_REPORT with the device checklist (Track A first, then Track B yes/no checks 1–5 each with its fallback). No subagent review here.
