@@ -38,7 +38,88 @@ KEYS = {"enter": "Return", "return": "Return", "tab": "Tab", "space": "Space", "
 PAGE_COLORS = ["#2D3A4A", "#1F4E8C", "#3C3C8C", "#1E5E3A", "#7A4A12",
                "#6B1F4E", "#4A5A1E", "#2A5A6A", "#5A2A2A", "#444444"]
 
+STEP_TYPES = ("key", "text", "wait", "url", "open", "run", "go_to_page")
+# Same list as SECRET_PATTERNS in logi-cool-j-builder.html (HANDOUT rule 4). The .lp5 is a plain zip.
+SECRET_PATTERNS = [re.compile(p) for p in (
+    r"\bsk-[a-zA-Z0-9_-]{16,}\b", r"\bgsk_[a-zA-Z0-9]{20,}\b", r"\bgithub_pat_[a-zA-Z0-9_]{20,}\b",
+    r"\bhf_[a-zA-Z0-9]{20,}\b", r"\bAKIA[0-9A-Z]{16}\b", r"\bghp_[a-zA-Z0-9]{20,}\b",
+    r"\bAIza[0-9A-Za-z_-]{30,}\b", r"\bxox[baprs]-[0-9a-zA-Z-]{10,}\b",
+    r"(?i)password\s*[:=]\s*\S+", r"(?i)api[_-]?key\s*[:=]\s*\S+")]
+
 seen_unknown = set()
+
+
+def check_layout(lay):
+    """Every problem that would make a wrong or unsafe .lp5, as readable lines (empty = OK).
+    Mirrors the builder's checks so a hand-edited YAML gets the same rules."""
+    errs = []
+    if not isinstance(lay, dict):
+        return ["The file is not a YAML mapping."]
+    try:
+        n_pages = int(lay.get("profile_page_count", 10))
+    except (TypeError, ValueError):
+        return ["profile_page_count must be a whole number."]
+    if not 1 <= n_pages <= 99:
+        errs.append(f"profile_page_count {n_pages} is out of range 1..99.")
+    for pi in range(1, n_pages + 1):
+        src = lay.get(f"page_{pi}")
+        if src is None:
+            continue
+        if not isinstance(src, dict):
+            errs.append(f"page_{pi} must be a mapping with name and buttons.")
+            continue
+        seen_ids = set()
+        for b in src.get("buttons") or []:
+            where = f"Page {pi}"
+            try:
+                bid = int(b.get("id"))
+            except (TypeError, ValueError, AttributeError):
+                errs.append(f"{where}: a button has no valid id (0..8).")
+                continue
+            where = f"Page {pi} button {bid}"
+            if not 0 <= bid <= 8:
+                errs.append(f"{where}: id must be 0..8.")
+            if bid in seen_ids:
+                errs.append(f"{where}: id used twice on this page.")
+            seen_ids.add(bid)
+            steps = b.get("steps") or []
+            if not isinstance(steps, list):
+                errs.append(f"{where}: steps must be a list.")
+                continue
+            for si, s in enumerate(steps, 1):
+                if not isinstance(s, dict) or len(s) != 1:
+                    errs.append(f"{where} step {si}: needs exactly one of {', '.join(STEP_TYPES)}.")
+                    continue
+                (kind, val), = s.items()
+                if kind not in STEP_TYPES:
+                    errs.append(f"{where} step {si}: unknown step '{kind}'.")
+                    continue
+                if val is None or str(val).strip() == "":
+                    errs.append(f"{where} step {si} ({kind}): value is empty.")
+                    continue
+                if kind in ("wait", "go_to_page"):
+                    try:
+                        num = int(str(val))
+                    except ValueError:
+                        errs.append(f"{where} step {si}: {kind} must be a whole number.")
+                        continue
+                    if kind == "wait" and num < 0:
+                        errs.append(f"{where} step {si}: wait must be 0 or more.")
+                    if kind == "go_to_page":
+                        if not 1 <= num <= n_pages:
+                            errs.append(f"{where}: go_to_page {num} is out of range 1..{n_pages}.")
+                        if len(steps) > 1:
+                            errs.append(f"{where}: go_to_page must be the button's only step.")
+                if kind == "key":
+                    combo = str(val)
+                    parts = ["+"] if combo == "+" else [p.strip() for p in combo.split("+") if p.strip()]
+                    bad = [p for p in parts[:-1] if p.lower() not in MODS]
+                    if bad:
+                        errs.append(f"{where} step {si}: unknown modifier '{'+'.join(bad)}' (use Ctrl, Shift, Alt, Win).")
+                if any(rx.search(str(val)) for rx in SECRET_PATTERNS):
+                    # Never echo the value.
+                    errs.append(f"{where} step {si}: looks like an API key or password; refused (the .lp5 is a plain zip).")
+    return errs
 
 
 _NS = uuid.NAMESPACE_URL
@@ -145,10 +226,16 @@ def main(yaml_path=None, out_path=None, template=None):
     j = lambda f: os.path.join(here, f)
     yaml_path = yaml_path or j("keypad-layout.yaml")
     template = template or j("template.lp5")
-    z = zipfile.ZipFile(template)
-    prof = json.loads(z.read("ProfileInfo.json").decode("utf-8-sig"))
-    appinfo = json.loads(z.read("ApplicationInfo.json").decode("utf-8-sig"))
-    lay = yaml.safe_load(open(yaml_path, encoding="utf-8"))
+    seen_unknown.clear()
+    with zipfile.ZipFile(template) as z:
+        tpl = {n: z.read(n) for n in z.namelist()}
+    prof = json.loads(tpl["ProfileInfo.json"].decode("utf-8-sig"))
+    appinfo = json.loads(tpl["ApplicationInfo.json"].decode("utf-8-sig"))
+    with open(yaml_path, encoding="utf-8") as f:
+        lay = yaml.safe_load(f)
+    problems = check_layout(lay)
+    if problems:
+        raise SystemExit("Not built; fix these first:\n  " + "\n  ".join(problems))
     name = str(lay.get("profile_name") or "Keypad Layout")
     _seed[0] = str(lay.get("profile_id") or name)
     out_path = out_path or j(re.sub(r'[<>:"/\\|?*]', "_", name) + ".lp5")
@@ -238,17 +325,17 @@ def main(yaml_path=None, out_path=None, template=None):
     appinfo["defaultProfileName"] = pid
 
     dump = lambda o: json.dumps(o, indent=4, ensure_ascii=False).replace("\n", "\r\n").encode("utf-8")
-    pkg = z.read("metadata/LoupedeckPackage.yaml").decode("utf-8-sig")
+    pkg = tpl["metadata/LoupedeckPackage.yaml"].decode("utf-8-sig")
     pkg = re.sub(r"(?m)^name: .*$", f"name: {pid}", pkg)
     pkg = re.sub(r"(?m)^displayName: .*$", f"displayName: {name}", pkg)
 
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as o:
-        o.writestr("ApplicationIcon.png", z.read("ApplicationIcon.png"))
+        o.writestr("ApplicationIcon.png", tpl["ApplicationIcon.png"])
         o.writestr("ApplicationInfo.json", dump(appinfo))
         o.writestr("ProfileInfo.json", dump(prof))
         for path, data in images.items():
             o.writestr(path, data)
-        o.writestr("metadata/AdvancedInfo.json", z.read("metadata/AdvancedInfo.json"))
+        o.writestr("metadata/AdvancedInfo.json", tpl["metadata/AdvancedInfo.json"])
         o.writestr("metadata/LoupedeckPackage.yaml", pkg.encode("utf-8"))
         o.writestr("metadata/ProfilePreview.json", dump({"buttonPages": preview, "encoderPages": []}))
 
