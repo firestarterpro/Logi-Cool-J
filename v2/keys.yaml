@@ -1,0 +1,550 @@
+# ============================================================================
+# keys.yaml: logi-cool-j 2 layout (10 pages x 9 keys). The plugin reloads this
+# file a moment after you save it; a bad file keeps the last good layout and
+# shows the line number on a key and in a Windows notification.
+# Contract: lp5-build\HANDOUT-keypad-addon.md, plus
+#   paths:      ${name} variables for text/url/open/run steps
+#   color:      optional per key, "#RRGGBB"
+#   text_mode:  "type" (default) or "paste" (clipboard), top level or per key
+# Editor: v2\editor\keys-editor.html (saving there rewrites this file and drops comments).
+# Made by migrate_keys.py from lp5-build\keypad-layout.yaml.
+# ============================================================================
+
+profile_name: "MX 10-Page Layout"
+profile_page_count: 10
+text_mode: "type"
+
+# Folders and programs used below. Change a value here and every key follows.
+paths:
+  templar: "C:\\Templar Archives"
+  ai_scripts: "${templar}\\stacks-attacks\\tools\\ai-scripts"
+  gateway: "${templar}\\Templar Nexus\\dist\\TheGateway\\TheGateway.exe"
+  ai_control_center: "${templar}\\ai-control-center\\app\\dist\\AI Control Center.exe"
+  ref_drafts: "${templar}\\Basketball Bro\\Ref Text Confirm\\pc-only-ref-drafts"
+  beer_league: "${templar}\\Basketball Bro\\beer-league"
+  html_render: "${templar}\\My Apps\\html-render"
+  logi_cool_j: "${templar}\\My Apps\\Logi.Cool.J"
+  cursor: "C:\\Users\\kcorn\\AppData\\Local\\Programs\\Cursor\\Cursor.exe"
+  llm_explorer: "C:\\llm-explorer"
+  documents: "C:\\Users\\kcorn\\OneDrive\\Documents"
+  options_plus: "C:\\Program Files\\LogiOptionsPlus\\logioptionsplus.exe"
+
+page_1:
+  name: "AI Scripts"
+  buttons:
+    - id: 0
+      label: "Open DL"
+      icon: "download"
+      steps:
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"${ai_scripts}\\AiScript.ps1\" -Action OpenDownload"
+    - id: 1
+      label: "Open Clip"
+      icon: "clipboard"
+      steps:
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"${ai_scripts}\\AiScript.ps1\" -Action OpenClipboard"
+    - id: 2
+      label: "Run Script"
+      icon: "play"
+      steps:
+        - key: "Ctrl+Alt+Shift+R"
+    - id: 3
+      label: "Copy Result"
+      icon: "copy"
+      steps:
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"${ai_scripts}\\AiScript.ps1\" -Action Copy"
+    - id: 4
+      label: "Recycle Run"
+      icon: "recycle"
+      steps:
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"${ai_scripts}\\AiScript.ps1\" -Action Recycle"
+    - id: 5
+      label: "Ask Cursor"
+      icon: "robot"
+      steps:
+        - key: "Ctrl+L"
+    - id: 6
+      label: "To Cursor"
+      icon: "cursor"
+      steps:
+        - open: "${cursor}"
+    - id: 7
+      label: "Index"
+      icon: "list"
+      steps:
+        - go_to_page: 10
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+page_2:
+  name: "Home"
+  buttons:
+    - id: 0
+      label: "Gateway"
+      icon: "gateway"
+      steps:
+        - open: "${gateway}"
+    - id: 1
+      label: "Claude"
+      icon: "spark"
+      steps:
+        - open: "explorer.exe shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude"
+    - id: 2
+      label: "AI Control"
+      icon: "brain"
+      steps:
+        - open: "${ai_control_center}"
+    - id: 3
+      label: "Ref Drafts"
+      icon: "whistle"
+      steps:
+        - open: "${ref_drafts}\\node_modules\\electron\\dist\\electron.exe \"${ref_drafts}\""
+    - id: 4
+      label: "DeepSeek"
+      icon: "deepseek"
+      steps:
+        - url: "https://chat.deepseek.com"
+        - wait: 1500
+    - id: 5
+      label: "CursorCline"
+      icon: "cursor"
+      steps:
+        - open: "${cursor}"
+        - wait: 4000
+        - key: "Ctrl+Alt+L"
+    - id: 6
+      label: "PlayPause"
+      icon: "play"
+      steps:
+        - key: "MediaPlayPause"
+    - id: 7
+      label: "AI Scripts"
+      icon: "1"
+      steps:
+        - go_to_page: 1
+    - id: 8
+      label: "Index"
+      icon: "list"
+      steps:
+        - go_to_page: 10
+
+page_3:
+  name: "DeepSeek"
+  buttons:
+    - id: 0
+      label: "Open DS"
+      icon: "deepseek"
+      steps:
+        - url: "https://chat.deepseek.com"
+        - wait: 1500
+    - id: 1
+      label: "/new"
+      icon: "plus"
+      steps:
+        - text: "/new"
+    - id: 2
+      label: "/search"
+      icon: "search"
+      steps:
+        - text: "/search "
+    - id: 3
+      label: "/summarize"
+      icon: "doc"
+      steps:
+        - text: "/summarize "
+    - id: 4
+      label: "/compress"
+      icon: "shrink"
+      steps:
+        - text: "/compress "
+    - id: 5
+      label: "/export"
+      icon: "download"
+      steps:
+        - text: "/export "
+    - id: 6
+      label: "/short"
+      icon: "scissors"
+      steps:
+        - text: "/short "
+    - id: 7
+      label: "/review"
+      icon: "eye"
+      steps:
+        - text: "/review "
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+page_4:
+  name: "Cursor+Cline"
+  buttons:
+    - id: 0
+      label: "Cursor"
+      icon: "cursor"
+      steps:
+        - open: "${cursor}"
+    - id: 1
+      label: "ShowCline"
+      icon: "robot"
+      steps:
+        - key: "Ctrl+Alt+L"
+    - id: 2
+      label: "CmdPal"
+      icon: "palette"
+      steps:
+        - key: "Ctrl+Shift+P"
+    - id: 3
+      label: "QuickOpen"
+      icon: "zap"
+      steps:
+        - key: "Ctrl+P"
+    - id: 4
+      label: "Terminal"
+      icon: "terminal"
+      steps:
+        - key: "Ctrl+`"
+    - id: 5
+      label: "Problems"
+      icon: "warn"
+      steps:
+        - key: "Ctrl+Shift+M"
+    - id: 6
+      label: "SourceCtrl"
+      icon: "git"
+      steps:
+        - key: "Ctrl+Shift+G"
+    - id: 7
+      label: "OpenFolder"
+      icon: "folder"
+      steps:
+        - key: "Ctrl+K"
+        - key: "Ctrl+O"
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+page_5:
+  name: "Terminal"
+  buttons:
+    - id: 0
+      label: "PowerShell"
+      icon: "powershell"
+      steps:
+        - open: "pwsh.exe"
+    - id: 1
+      label: "TermProj"
+      icon: "terminal"
+      steps:
+        - open: "wt.exe -d \"${templar}\""
+    - id: 2
+      label: "agy"
+      icon: "robot"
+      steps:
+        - text: "agy"
+    - id: 3
+      label: "claude"
+      icon: "spark"
+      steps:
+        - text: "claude"
+    - id: 4
+      label: "Clear"
+      icon: "broom"
+      steps:
+        - key: "Ctrl+L"
+    - id: 5
+      label: "git status"
+      icon: "git"
+      steps:
+        - text: "git status"
+    - id: 6
+      label: "git diff"
+      icon: "diff"
+      steps:
+        - text: "git diff"
+    - id: 7
+      label: "New Tab"
+      icon: "plus"
+      steps:
+        - key: "Ctrl+Shift+T"
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+page_6:
+  name: "Research"
+  buttons:
+    - id: 0
+      label: "Perplexity"
+      icon: "globe"
+      steps:
+        - url: "https://perplexity.ai"
+        - wait: 1500
+    - id: 1
+      label: "NewTab"
+      icon: "plus"
+      steps:
+        - key: "Ctrl+T"
+    - id: 2
+      label: "SearchSel"
+      icon: "search"
+      steps:
+        - key: "Ctrl+C"
+        - wait: 200
+        - key: "Ctrl+T"
+        - wait: 500
+        - key: "Ctrl+V"
+        - key: "Return"
+    - id: 3
+      label: "OpenURL"
+      icon: "link"
+      steps:
+        - key: "Ctrl+L"
+        - key: "Ctrl+V"
+        - key: "Return"
+    - id: 4
+      label: "PrevTab"
+      icon: "left"
+      steps:
+        - key: "Ctrl+Shift+Tab"
+    - id: 5
+      label: "NextTab"
+      icon: "right"
+      steps:
+        - key: "Ctrl+Tab"
+    - id: 6
+      label: "Bookmarks"
+      icon: "star"
+      steps:
+        - key: "Ctrl+Shift+O"
+    - id: 7
+      label: "Downloads"
+      icon: "download"
+      steps:
+        - key: "Ctrl+J"
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+page_7:
+  name: "Capture"
+  buttons:
+    - id: 0
+      label: "ClipHist"
+      icon: "clipboard"
+      steps:
+        - key: "Win+V"
+    - id: 1
+      label: "Screenshot"
+      icon: "camera"
+      steps:
+        - key: "Win+Shift+S"
+    - id: 2
+      label: "PlainPaste"
+      icon: "paste"
+      steps:
+        - key: "Ctrl+Shift+V"
+    - id: 3
+      label: "Clip→txt"
+      icon: "doc"
+      steps:
+        - open: "notepad.exe"
+        - wait: 1200
+        - key: "Ctrl+V"
+        - wait: 200
+        - key: "Ctrl+S"
+    - id: 4
+      label: "HTMLRender"
+      icon: "image"
+      steps:
+        - key: "Ctrl+Alt+R"
+    - id: 5
+      label: "RenderOut"
+      icon: "folder"
+      steps:
+        - open: "${documents}"
+    - id: 6
+      label: "SwitchPaste"
+      icon: "swap"
+      steps:
+        - key: "Ctrl+C"
+        - wait: 200
+        - key: "Alt+Tab"
+        - wait: 500
+        - key: "Ctrl+V"
+    - id: 7
+      label: "Dictate"
+      icon: "mic"
+      steps:
+        - key: "Win+H"
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+page_8:
+  name: "Files"
+  buttons:
+    - id: 0
+      label: "Downloads"
+      icon: "download"
+      steps:
+        - open: "%USERPROFILE%\\Downloads"
+    - id: 1
+      label: "Templar"
+      icon: "castle"
+      steps:
+        - open: "${templar}"
+    - id: 2
+      label: "SyncConsole"
+      icon: "sync"
+      steps:
+        - run: "${beer_league}\\sync\\Start Sync Console.bat"
+    - id: 3
+      label: "BeerLeague"
+      icon: "basketball"
+      steps:
+        - open: "${beer_league}"
+    - id: 4
+      label: "LLMExplorer"
+      icon: "rocket"
+      steps:
+        - open: "${llm_explorer}"
+    - id: 5
+      label: "HTMLRender"
+      icon: "image"
+      steps:
+        - open: "${html_render}"
+    - id: 6
+      label: "LogiCoolJ"
+      icon: "keyboard"
+      steps:
+        - open: "${logi_cool_j}"
+    - id: 7
+      label: "Options+"
+      icon: "gear"
+      steps:
+        - open: "${options_plus}"
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+page_9:
+  name: "Windows"
+  buttons:
+    - id: 0
+      label: "SnapLeft"
+      icon: "left"
+      steps:
+        - key: "Win+Left"
+    - id: 1
+      label: "Maximize"
+      icon: "expand"
+      steps:
+        - key: "Win+Up"
+    - id: 2
+      label: "SnapRight"
+      icon: "right"
+      steps:
+        - key: "Win+Right"
+    - id: 3
+      label: "PrevDisp"
+      icon: "monitor-l"
+      steps:
+        - key: "Win+Shift+Left"
+    - id: 4
+      label: "TaskView"
+      icon: "grid"
+      steps:
+        - key: "Win+Tab"
+    - id: 5
+      label: "NextDisp"
+      icon: "monitor-r"
+      steps:
+        - key: "Win+Shift+Right"
+    - id: 6
+      label: "PrevDesk"
+      icon: "desk-l"
+      steps:
+        - key: "Ctrl+Win+Left"
+    - id: 7
+      label: "NextDesk"
+      icon: "desk-r"
+      steps:
+        - key: "Ctrl+Win+Right"
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+page_10:
+  name: "Index"
+  buttons:
+    - id: 0
+      label: "→ DeepSeek"
+      icon: "3"
+      steps:
+        - go_to_page: 3
+    - id: 1
+      label: "→ Cursor"
+      icon: "4"
+      steps:
+        - go_to_page: 4
+    - id: 2
+      label: "→ Terminal"
+      icon: "5"
+      steps:
+        - go_to_page: 5
+    - id: 3
+      label: "→ Research"
+      icon: "6"
+      steps:
+        - go_to_page: 6
+    - id: 4
+      label: "→ Capture"
+      icon: "7"
+      steps:
+        - go_to_page: 7
+    - id: 5
+      label: "→ Files"
+      icon: "8"
+      steps:
+        - go_to_page: 8
+    - id: 6
+      label: "→ Windows"
+      icon: "9"
+      steps:
+        - go_to_page: 9
+    - id: 7
+      label: "Mute"
+      icon: "mute"
+      steps:
+        - key: "VolumeMute"
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+# Informational only (dials are set by hand in Options+).
+dials:
+  cursor: Switch editor tabs
+  deepseek: Scroll long answers
+  general: Scroll
+  roller: Zoom / fine scroll (per profile — verify exact options)
+  volume: Volume (any page; the Media page was folded into Home and Index)
+  windows: Switch virtual desktops

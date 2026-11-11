@@ -1,14 +1,19 @@
-"""Convert keypad-layout.yaml into a Loupedeck/Logi Options+ .lp5 profile.
+"""Convert a keypad layout into a Loupedeck/Logi Options+ .lp5 profile.
 
-Usage: python yaml2lp5.py [keypad-layout.yaml] [out.lp5] [template.lp5]
+Reads v1 keypad-layout.yaml and v2 keys.yaml (the same contract plus a paths: block of
+${name} variables, an optional color per key and an optional text_mode).
+
+Usage: python yaml2lp5.py [layout.yaml] [out.lp5] [template.lp5]
+       python yaml2lp5.py --check [layout.yaml]
 Defaults: keypad-layout.yaml, <profile_name>.lp5, template.lp5 (all next to this script).
-IDs are derived from profile_name + page/button, so rebuilding keeps the same IDs.
+IDs are derived from profile_id (or profile_name) + page/button, so rebuilding keeps the same IDs.
+Options+ assigns its own IDs on import, so a rebuilt file imports as a new profile.
 
 The template .lp5 supplies $type strings, plugin lists and app metadata.
 Its old buttons, macros, profile actions and icons are dropped.
 Requires: pyyaml, pillow.
 """
-import base64, io, json, os, re, sys, uuid, zipfile
+import base64, copy, io, json, os, re, sys, uuid, zipfile
 from datetime import datetime, timezone
 
 import yaml
@@ -48,6 +53,69 @@ SECRET_PATTERNS = [re.compile(p) for p in (
 
 seen_unknown = set()
 
+PATH_VAR = re.compile(r"\$\{([^}]*)\}")
+VAR_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
+TEXT_MODES = ("type", "paste")
+EXPANDED_STEPS = ("text", "url", "open", "run")
+
+
+def resolve_paths(paths):
+    """keys.yaml paths: block -> ({name: fully expanded value}, [problems]). Values may use ${other}."""
+    if paths is None:
+        return {}, []
+    if not isinstance(paths, dict):
+        return {}, ["paths must be a mapping of name: value."]
+    errs, raw = [], {}
+    for k, v in paths.items():
+        if not isinstance(k, str) or not VAR_NAME.match(k):
+            errs.append(f"paths: '{k}' is not a valid name (letters, digits, _).")
+        elif not isinstance(v, str) or not v.strip():
+            errs.append(f"paths: {k} needs a text value.")
+        else:
+            raw[k] = v
+    done = {}
+
+    def solve(name, stack):
+        if name in done:
+            return done[name]
+        if name in stack:
+            raise ValueError(f"paths: {' -> '.join(stack + [name])} refers to itself.")
+        if name not in raw:
+            raise KeyError(name)
+        out = PATH_VAR.sub(lambda m: solve(m.group(1), stack + [name]), raw[name])
+        done[name] = out
+        return out
+
+    for k in raw:
+        try:
+            solve(k, [])
+        except ValueError as e:
+            errs.append(str(e))
+        except KeyError as e:
+            errs.append(f"paths: {k} uses ${{{e.args[0]}}}, which is not defined.")
+    return done, sorted(set(errs), key=errs.index)
+
+
+def expand_value(value, resolved):
+    return PATH_VAR.sub(lambda m: resolved[m.group(1)], value)
+
+
+def expanded_layout(lay):
+    """Copy of a checked layout with every ${name} in text/url/open/run steps replaced."""
+    resolved, _ = resolve_paths(lay.get("paths"))
+    out = copy.deepcopy(lay)
+    out.pop("paths", None)
+    for key, page in out.items():
+        if not (key.startswith("page_") and isinstance(page, dict)):
+            continue
+        for b in page.get("buttons") or []:
+            for s in b.get("steps") or []:
+                (kind, val), = s.items()
+                if kind in EXPANDED_STEPS and isinstance(val, str):
+                    s[kind] = expand_value(val, resolved)
+    return out
+
 
 def check_layout(lay):
     """Every problem that would make a wrong or unsafe .lp5, as readable lines (empty = OK).
@@ -55,6 +123,13 @@ def check_layout(lay):
     errs = []
     if not isinstance(lay, dict):
         return ["The file is not a YAML mapping."]
+    resolved, path_errs = resolve_paths(lay.get("paths"))
+    errs += path_errs
+    for k, v in resolved.items():
+        if any(rx.search(v) for rx in SECRET_PATTERNS):
+            errs.append(f"paths: {k} looks like an API key or password; refused.")
+    if lay.get("text_mode") is not None and lay.get("text_mode") not in TEXT_MODES:
+        errs.append("text_mode must be type or paste.")
     try:
         n_pages = int(lay.get("profile_page_count", 10))
     except (TypeError, ValueError):
@@ -82,6 +157,10 @@ def check_layout(lay):
             if bid in seen_ids:
                 errs.append(f"{where}: id used twice on this page.")
             seen_ids.add(bid)
+            if b.get("color") is not None and not COLOR.match(str(b.get("color"))):
+                errs.append(f"{where}: color must look like #1F4E8C.")
+            if b.get("text_mode") is not None and b.get("text_mode") not in TEXT_MODES:
+                errs.append(f"{where}: text_mode must be type or paste.")
             steps = b.get("steps") or []
             if not isinstance(steps, list):
                 errs.append(f"{where}: steps must be a list.")
@@ -116,7 +195,14 @@ def check_layout(lay):
                     bad = [p for p in parts[:-1] if p.lower() not in MODS]
                     if bad:
                         errs.append(f"{where} step {si}: unknown modifier '{'+'.join(bad)}' (use Ctrl, Shift, Alt, Win).")
-                if any(rx.search(str(val)) for rx in SECRET_PATTERNS):
+                if kind in EXPANDED_STEPS:
+                    for m in PATH_VAR.finditer(str(val)):
+                        if m.group(1) not in resolved and not any(f"paths: {m.group(1)} " in e for e in path_errs):
+                            errs.append(f"{where} step {si}: ${{{m.group(1)}}} is not in paths.")
+                text = str(val)
+                if kind in EXPANDED_STEPS and resolved:
+                    text = PATH_VAR.sub(lambda m: resolved.get(m.group(1), m.group(0)), text)
+                if any(rx.search(text) for rx in SECRET_PATTERNS):
                     # Never echo the value.
                     errs.append(f"{where} step {si}: looks like an API key or password; refused (the .lp5 is a plain zip).")
     return errs
@@ -172,6 +258,15 @@ def exec_app(target):
     path, args = split_exe(target)
     workdir = path.rsplit("\\", 1)[0] if "\\" in path and path.lower().endswith(".exe") else ""
     return f"$@Generic___@ExecuteApplication___{path}||{args}||{workdir}"
+
+
+def is_ps1(target):
+    return target.strip().strip('"').lower().endswith(".ps1")
+
+
+def ps1_command(target):
+    """A .ps1 always runs through pwsh (Windows would open it in Notepad)."""
+    return f'pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "{target.strip().strip(chr(34))}"'
 
 
 def is_uri(t):
@@ -236,6 +331,7 @@ def main(yaml_path=None, out_path=None, template=None):
     problems = check_layout(lay)
     if problems:
         raise SystemExit("Not built; fix these first:\n  " + "\n  ".join(problems))
+    lay = expanded_layout(lay)
     name = str(lay.get("profile_name") or "Keypad Layout")
     _seed[0] = str(lay.get("profile_id") or name)
     out_path = out_path or j(re.sub(r'[<>:"/\\|?*]', "_", name) + ".lp5")
@@ -254,14 +350,16 @@ def main(yaml_path=None, out_path=None, template=None):
             b = by_id.get(cid) or {}
             steps = b.get("steps") or []
             label = str(b.get("label") or "")
+            color = str(b.get("color") or PAGE_COLORS[pi % 10])
+            paste = (b.get("text_mode") or lay.get("text_mode") or "type") == "paste"
             action = None
+            target1 = steps[0].get("run") or steps[0].get("open") if len(steps) == 1 else None
+            target1 = None if target1 is None else str(target1)
             if len(steps) == 1 and "go_to_page" in steps[0]:
                 action = goto(steps[0]["go_to_page"])
-            elif len(steps) == 1 and ("run" in steps[0] or ("open" in steps[0]
-                                       and not split_exe(steps[0]["open"])[0].lower().endswith(".exe")
-                                       and not is_uri(steps[0]["open"]))):
-                target = steps[0].get("run") or steps[0].get("open")
-                target = target.replace("%USERPROFILE%", os.environ.get("USERPROFILE", "%USERPROFILE%"))
+            elif target1 is not None and not is_ps1(target1) and (
+                    "run" in steps[0] or (not split_exe(target1)[0].lower().endswith(".exe") and not is_uri(target1))):
+                target = target1.replace("%USERPROFILE%", os.environ.get("USERPROFILE", "%USERPROFILE%"))
                 action = f"$@Generic___@ProfileAction___{gid(pi, cid, 'file')}"
                 pactions.append({
                     "$type": T_PCMD, "isCommand": True, "name": action,
@@ -283,13 +381,16 @@ def main(yaml_path=None, out_path=None, template=None):
                     elif "text" in s:
                         n = gid(pi, cid, si); acts.append(n)
                         eds.append({"$type": T_EDCMD, "name": n, "templateName": "$@Generic___@SendText",
-                                    "actionParameters": {"$type": DICT_T, "text": str(s["text"]), "useClipboard": "false"}})
+                                    "actionParameters": {"$type": DICT_T, "text": str(s["text"]),
+                                                         "useClipboard": "true" if paste else "false"}})
                     elif "wait" in s:
                         acts.append(f"$@Generic___@Sleep___{int(s['wait'])}")
                     elif "url" in s:
                         acts.append(f"$@Generic___@OpenUrl___{s['url']}")
                     elif "open" in s or "run" in s:
                         t = (s.get("open") or s.get("run")).replace("%USERPROFILE%", os.environ.get("USERPROFILE", "%USERPROFILE%"))
+                        if is_ps1(t):
+                            t = ps1_command(t)
                         acts.append(f"$@Generic___@OpenUrl___{t}" if is_uri(t) else exec_app(t))
                     elif "go_to_page" in s:
                         acts.append(goto(s["go_to_page"]))
@@ -302,7 +403,7 @@ def main(yaml_path=None, out_path=None, template=None):
                                "isMultiState": False, "actions": acts})
                 action = f"$@Generic___@Macro___{mid}"
             if action and "ChangeTouchPage" not in action:
-                images[f"ActionImages/{action}.png"] = render_icon(label, PAGE_COLORS[pi % 10])
+                images[f"ActionImages/{action}.png"] = render_icon(label, color)
             controls.append({"$type": T_CTRL, "controlId": cid, "pressAction": action, "rotateAction": None})
             if pi == 0:
                 preview.append({"controlId": cid, "actionName": action, "displayName": label, "description": None,
@@ -345,5 +446,19 @@ def main(yaml_path=None, out_path=None, template=None):
         print("Unverified key names (test these):", ", ".join(sorted(seen_unknown)))
 
 
+def check_only(yaml_path=None):
+    here = os.path.dirname(os.path.abspath(__file__))
+    yaml_path = yaml_path or os.path.join(here, "keypad-layout.yaml")
+    with open(yaml_path, encoding="utf-8") as f:
+        problems = check_layout(yaml.safe_load(f))
+    if problems:
+        raise SystemExit("Problems in " + yaml_path + ":\n  " + "\n  ".join(problems))
+    print(f"{yaml_path}: OK")
+
+
 if __name__ == "__main__":
-    main(*sys.argv[1:4])
+    args = sys.argv[1:]
+    if args[:1] == ["--check"]:
+        check_only(*args[1:2])
+    else:
+        main(*args[:3])
