@@ -1,0 +1,6 @@
+# personal layouts and build output
+lp5-build/keypad-layout.yaml
+*.lp5
+!lp5-build/template.lp5
+__pycache__/
+node_modules/

@@ -1,0 +1,3456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logi Cool J — MX Console Builder</title>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<style>
+/* =========================================================
+   SPACE THEME — LIGHT, DAWN-IN-ORBIT (Upgraded Visuals)
+   ========================================================= */
+:root {
+  --surface: rgba(255, 255, 255, 0.95);
+  --surface-solid: #fbf9ff;
+  --surface-hover: rgba(255, 255, 255, 0.96);
+  --input-bg: rgba(255, 255, 255, 0.78);
+  --code-bg: rgba(250, 248, 255, 0.94);
+
+  --border: rgba(140, 140, 190, 0.28);
+  --border-strong: rgba(120, 120, 170, 0.48);
+
+  --text: #2a2a40;
+  --text-dim: #55556f;
+  --text-mute: #686884;
+
+  --accent: #7c6aff;
+  --accent-2: #ff8bb5;
+  --accent-3: #38bdf8;
+  --accent-glow: rgba(124, 106, 255, 0.25);
+  --accent-2-glow: rgba(255, 139, 181, 0.22);
+  --warn: #f59e0b;
+  --danger: #ff5e7a;
+  --ok: #22b983;
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow-card:
+    0 1px 0 rgba(255,255,255,0.95) inset,
+    0 14px 36px -12px rgba(100, 90, 180, 0.18),
+    0 4px 12px -4px rgba(100, 90, 180, 0.10);
+  --shadow-card-hover:
+    0 1px 0 rgba(255,255,255,1) inset,
+    0 20px 42px -12px rgba(100, 90, 180, 0.24),
+    0 6px 16px -4px rgba(100, 90, 180, 0.14);
+
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --ease: cubic-bezier(.2,.7,.2,1);
+  --base: 16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-ui);
+  font-size: var(--base);
+  color: var(--text);
+  background:
+    linear-gradient(135deg,
+      #f3e8ff 0%,
+      #fff0f5 30%,
+      #eaf2ff 65%,
+      #f5ebff 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* =========================================================
+   SOLAR SYSTEM + STARS + ORBIT ARCS BACKGROUND
+   ========================================================= */
+.space-bg {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.orbit-line {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(124, 106, 255, 0.14);
+  pointer-events: none;
+}
+.orbit-line.o1 {
+  width: 680px; height: 680px;
+  top: -340px; right: -340px;
+}
+.orbit-line.o2 {
+  width: 1120px; height: 1120px;
+  top: -560px; right: -560px;
+  border-color: rgba(255, 139, 181, 0.14);
+}
+.orbit-line.o3 {
+  width: 1600px; height: 1600px;
+  top: -800px; right: -800px;
+}
+
+/* --- Sun --- */
+.sun {
+  position: absolute;
+  top: -120px; right: -120px;
+  width: 360px; height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #ffe08a 0%, #ffb84d 35%, #ff8a3d 65%, transparent 90%);
+  filter: blur(8px);
+  opacity: 0.55;
+  box-shadow:
+    0 0 80px 20px rgba(255, 200, 100, 0.35),
+    0 0 160px 60px rgba(255, 170, 80, 0.18);
+  animation: sunGlow 12s ease-in-out infinite alternate;
+}
+@keyframes sunGlow {
+  0%   { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.08); opacity: 0.7; }
+}
+
+/* --- Planets --- */
+.planet {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow:
+    inset -14px -14px 28px rgba(80, 50, 120, 0.28),
+    inset 8px 8px 20px rgba(255, 255, 255, 0.35);
+}
+
+.planet.p1 {
+  top: 22%; left: 4%;
+  width: 90px; height: 90px;
+  background: radial-gradient(circle at 32% 32%, #ffcfa3 0%, #ffb184 40%, #e8785a 80%, #c25a42 100%);
+  animation: float1 22s ease-in-out infinite;
+}
+
+.planet.p2 {
+  top: 58%; right: 6%;
+  width: 140px; height: 140px;
+  background:
+    linear-gradient(135deg, #a2d4ff 0%, #82b8ec 40%, #5b8ed1 75%, #4a7ab8 100%);
+  animation: float2 30s ease-in-out infinite;
+}
+
+.planet.p3 {
+  bottom: 10%; left: 12%;
+  width: 60px; height: 60px;
+  background: radial-gradient(circle at 30% 30%, #e0d4ff 0%, #b8a3f0 45%, #8a70d8 100%);
+  animation: float3 18s ease-in-out infinite;
+}
+
+.planet.p4 {
+  top: 8%; left: 40%;
+  width: 46px; height: 46px;
+  background: radial-gradient(circle at 32% 32%, #ffe0d6 0%, #ff9a85 60%, #d56b5a 100%);
+  animation: float2 26s ease-in-out infinite reverse;
+}
+
+/* Saturn ring */
+.planet-ring {
+  position: absolute;
+  top: 60%; right: 3.5%;
+  width: 200px; height: 200px;
+  pointer-events: none;
+  z-index: 0;
+}
+.planet-ring::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  border: 3px solid rgba(180, 160, 220, 0.35);
+  transform: translate(-50%, -50%) rotate(-22deg) scaleY(0.32);
+  box-shadow: 0 0 12px rgba(180, 160, 220, 0.25);
+}
+.planet-ring::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  border: 2px solid rgba(180, 160, 220, 0.22);
+  transform: translate(-50%, -50%) rotate(-22deg) scaleY(0.32);
+}
+
+@keyframes float1 {
+  0%,100% { transform: translate(0, 0) rotate(0); }
+  50%     { transform: translate(20px, -30px) rotate(8deg); }
+}
+@keyframes float2 {
+  0%,100% { transform: translate(0, 0) rotate(0); }
+  50%     { transform: translate(-25px, 15px) rotate(-6deg); }
+}
+@keyframes float3 {
+  0%,100% { transform: translate(0, 0); }
+  50%     { transform: translate(15px, 20px); }
+}
+
+/* --- Stars --- */
+.stars {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.75;
+}
+.stars::before {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 8% 14%, #7c6aff 0, transparent 60%),
+    radial-gradient(1.4px 1.4px at 22% 62%, #9f8eff 0, transparent 60%),
+    radial-gradient(1px 1px at 34% 28%, #ff8bb5 0, transparent 60%),
+    radial-gradient(1.2px 1.2px at 47% 82%, #7c6aff 0, transparent 60%),
+    radial-gradient(1px 1px at 56% 18%, #c7b8ff 0, transparent 60%),
+    radial-gradient(1.1px 1.1px at 63% 71%, #ffb8d1 0, transparent 60%),
+    radial-gradient(1.4px 1.4px at 71% 39%, #7c6aff 0, transparent 60%),
+    radial-gradient(1px 1px at 79% 88%, #9f8eff 0, transparent 60%),
+    radial-gradient(1.1px 1.1px at 86% 22%, #ff8bb5 0, transparent 60%),
+    radial-gradient(1px 1px at 93% 57%, #7c6aff 0, transparent 60%),
+    radial-gradient(1px 1px at 14% 41%, #c7b8ff 0, transparent 60%),
+    radial-gradient(1.3px 1.3px at 28% 88%, #7c6aff 0, transparent 60%),
+    radial-gradient(1px 1px at 41% 11%, #9f8eff 0, transparent 60%),
+    radial-gradient(1px 1px at 52% 51%, #ffb8d1 0, transparent 60%),
+    radial-gradient(1.2px 1.2px at 68% 9%, #7c6aff 0, transparent 60%),
+    radial-gradient(1px 1px at 88% 68%, #7c6aff 0, transparent 60%),
+    radial-gradient(1px 1px at 4% 77%, #9f8eff 0, transparent 60%),
+    radial-gradient(1.1px 1.1px at 97% 33%, #c7b8ff 0, transparent 60%);
+  animation: twinkle 7s ease-in-out infinite alternate;
+}
+.stars::after {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 12% 22%, #7c6aff 0, transparent 55%),
+    radial-gradient(2.4px 2.4px at 33% 74%, #ff8bb5 0, transparent 55%),
+    radial-gradient(2px 2px at 58% 34%, #c7b8ff 0, transparent 55%),
+    radial-gradient(2.6px 2.6px at 74% 63%, #7c6aff 0, transparent 55%),
+    radial-gradient(2px 2px at 89% 12%, #ff8bb5 0, transparent 55%),
+    radial-gradient(2.2px 2.2px at 46% 90%, #9f8eff 0, transparent 55%);
+  filter: drop-shadow(0 0 3px rgba(124, 106, 255, 0.55));
+  animation: twinkle2 5.5s ease-in-out infinite alternate;
+}
+@keyframes twinkle {
+  0%   { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+@keyframes twinkle2 {
+  0%   { opacity: 0.2; transform: scale(0.98); }
+  100% { opacity: 0.9; transform: scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .dial-btn:hover, .kp-cell:hover, .btn:active { transform: none; }
+}
+
+/* keyboard focus */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.input:focus-visible, .select:focus-visible, textarea:focus-visible { outline: none; }
+
+/* =========================================================
+   TOP BAR
+   ========================================================= */
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.76);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(18px) saturate(150%);
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.brand-mark { font-size: 22px; animation: floatY 5s var(--ease) infinite; }
+@keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.brand-name { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+.brand-name b { color: var(--accent); }
+.brand-ver {
+  font: 700 11px/1 var(--font-mono);
+  color: var(--accent);
+  background: rgba(124, 106, 255, 0.12);
+  padding: 3px 7px;
+  border-radius: 99px;
+  letter-spacing: .04em;
+}
+
+/* panel toggles */
+.panel-toggles {
+  display: flex; gap: 6px; align-items: center;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-left: 8px;
+  flex-wrap: wrap;
+}
+.panel-toggle {
+  appearance: none;
+  font: 700 12.5px/1 var(--font-ui);
+  color: var(--text-mute);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: all .18s var(--ease);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.panel-toggle:hover {
+  color: var(--text);
+  background: rgba(124, 106, 255, 0.08);
+}
+.panel-toggle.active {
+  color: #fff;
+  background: linear-gradient(180deg, #7c6aff, #6554e6);
+  box-shadow: 0 2px 8px rgba(124, 106, 255, 0.35);
+}
+.panel-toggle .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.65;
+  box-shadow: none;
+}
+.panel-toggle.active .dot { opacity: 1; }
+
+.topbar-right {
+  display: flex; align-items: center; gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.runtime-toggle {
+  display: inline-flex; padding: 4px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+.rt-btn {
+  appearance: none; background: transparent; border: 0;
+  color: var(--text-dim); font: 700 12px/1 var(--font-ui);
+  padding: 7px 11px; border-radius: 8px; cursor: pointer;
+  transition: 0.15s var(--ease);
+}
+.rt-btn:hover { color: var(--text); }
+.rt-btn.active {
+  color: #fff;
+  background: linear-gradient(180deg, #7c6aff, #6554e6);
+  box-shadow: 0 2px 6px rgba(124, 106, 255, 0.3);
+}
+
+/* =========================================================
+   BUTTONS & INPUTS
+   ========================================================= */
+.btn {
+  appearance: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  font: 600 13.5px/1 var(--font-ui);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: .15s var(--ease);
+  white-space: nowrap;
+}
+.btn:hover {
+  border-color: var(--accent);
+  background: rgba(124, 106, 255, 0.08);
+  box-shadow: 0 4px 12px -4px var(--accent-glow);
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: linear-gradient(180deg, #7c6aff, #6554e6);
+  border-color: rgba(124, 106, 255, 0.7);
+  color: #fff;
+  box-shadow: 0 4px 14px -4px var(--accent-glow);
+}
+.btn-primary:hover {
+  background: linear-gradient(180deg, #8f7dff, #7564f0);
+  color: #fff;
+}
+.btn-emerald {
+  background: linear-gradient(180deg, #25c98f, #1ba372);
+  border-color: rgba(34, 185, 131, 0.7);
+  color: #fff;
+  box-shadow: 0 4px 14px -4px rgba(34, 185, 131, 0.35);
+}
+.btn-emerald:hover {
+  background: linear-gradient(180deg, #2dd89c, #20b47f);
+  border-color: var(--ok);
+  color: #fff;
+}
+.btn-danger { color: var(--danger); }
+.btn-danger:hover { background: rgba(255, 94, 122, 0.08); border-color: var(--danger); }
+.btn-sm { padding: 7px 11px; font-size: 12.5px; }
+.btn-xs { padding: 5px 9px; font-size: 11.5px; border-radius: 8px; }
+
+.mini {
+  appearance: none;
+  width: 28px; height: 28px;
+  display: inline-grid; place-items: center;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font: 700 13px/1 var(--font-mono);
+  cursor: pointer;
+  transition: .15s var(--ease);
+}
+.mini:hover { color: var(--accent); border-color: var(--accent); background: rgba(124, 106, 255, 0.08); }
+.mini.danger:hover { border-color: var(--danger); color: var(--danger); background: rgba(255, 94, 122, 0.08); }
+
+.input, .select, textarea.code {
+  appearance: none;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: 400 14.5px/1.45 var(--font-ui);
+  outline: none;
+  transition: .15s var(--ease);
+  min-width: 0;
+}
+.input::placeholder, textarea.code::placeholder { color: var(--text-mute); }
+.input:focus, .select:focus, textarea.code:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.select { cursor: pointer; }
+.select.compact { padding: 7px 10px; font-size: 13px; }
+.input.compact { padding: 7px 10px; font-size: 13.5px; }
+.input.grow, .select.grow { flex: 1; }
+.input.emoji { width: 52px; text-align: center; font-size: 20px; padding: 8px; }
+textarea.code {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+  min-height: 80px;
+  background: var(--code-bg);
+}
+
+.lbl {
+  font: 700 11.5px/1 var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-mute);
+}
+
+/* =========================================================
+   GRID LAYOUT & DRAGGABLE CARDS
+   ========================================================= */
+.layout {
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+  max-width: 1740px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px) saturate(135%);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color .18s var(--ease), box-shadow .25s var(--ease), opacity .18s var(--ease);
+  min-width: 0;
+}
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card-hover);
+}
+.card.wide {
+  grid-column: span 2;
+}
+@media (max-width: 960px) {
+  .card.wide { grid-column: span 1; }
+}
+
+/* Dragging card state */
+.card.dragging-card {
+  opacity: 0.55;
+  transform: scale(0.985);
+  border-color: var(--accent);
+}
+.card.drag-over-card {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-card-hover);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.card-title {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+.card-grip {
+  cursor: grab;
+  color: var(--text-mute);
+  font-size: 14px;
+  padding: 2px 5px;
+  border-radius: 6px;
+  user-select: none;
+  transition: .15s;
+}
+.card-grip:hover {
+  color: var(--accent);
+  background: rgba(124, 106, 255, 0.1);
+}
+.card-grip:active { cursor: grabbing; }
+
+.dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  box-shadow: 0 0 10px currentColor;
+  flex: none;
+}
+.dot-accent { background: var(--accent); color: var(--accent-glow); }
+.dot-keypad { background: #f59e0b; color: rgba(245, 158, 11, 0.45); }
+.dot-lib    { background: var(--accent-2); color: var(--accent-2-glow); }
+.dot-llm    { background: #4bc3ff; color: rgba(75, 195, 255, 0.4); }
+.dot-prof   { background: var(--ok); color: rgba(34, 185, 131, 0.4); }
+
+.card-tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+.card-foot {
+  display: flex; align-items: center; gap: 8px;
+  font: 700 12px/1.4 var(--font-mono);
+  color: var(--text-mute);
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  flex: none;
+  flex-wrap: wrap;
+}
+.spacer { flex: 1; }
+
+.card[hidden] { display: none; }
+
+/* =========================================================
+   CONSOLE (3x3 DIAL GRID + DRAG & DROP CELLS)
+   ========================================================= */
+.dial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 10px;
+  aspect-ratio: 1 / 1;
+}
+
+.dial-btn {
+  position: relative;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: .18s var(--ease);
+  overflow: hidden;
+  min-height: 0;
+  user-select: none;
+}
+.dial-btn::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(80% 60% at 50% 0%, rgba(124, 106, 255, 0.16), transparent 70%);
+  opacity: 0;
+  transition: opacity .2s var(--ease);
+  pointer-events: none;
+}
+.dial-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -6px var(--accent-glow);
+}
+.dial-btn:hover::before { opacity: 1; }
+.dial-btn.active {
+  border-color: var(--accent);
+  background: rgba(124, 106, 255, 0.14);
+  box-shadow: 0 0 0 2px var(--accent-glow), 0 8px 20px -8px var(--accent-glow);
+}
+.dial-btn.empty { border-style: dashed; opacity: 0.74; }
+.dial-btn.drag-over-cell {
+  border-color: var(--ok);
+  background: rgba(34, 185, 131, 0.14);
+  transform: scale(1.03);
+}
+
+.dial-btn .num {
+  position: absolute;
+  top: 5px; left: 7px;
+  font: 700 10px/1 var(--font-mono);
+  color: var(--text-mute);
+}
+.dial-btn .home-hint {
+  position: absolute;
+  top: 5px; right: 6px;
+  font: 700 9px/1 var(--font-mono);
+  color: var(--accent);
+  background: rgba(124, 106, 255, 0.12);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.dial-btn .emoji { font-size: 22px; line-height: 1; }
+.dial-btn .thumb {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 6px rgba(100, 90, 180, 0.15);
+}
+.dial-btn .label {
+  font: 700 12px/1.2 var(--font-ui);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.dial-btn .step-pill {
+  font: 700 9.5px/1 var(--font-mono);
+  color: var(--text-dim);
+  background: rgba(124, 106, 255, 0.10);
+  padding: 2px 5px;
+  border-radius: 99px;
+}
+.dial-btn .indicator {
+  position: absolute;
+  bottom: 6px; right: 6px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.dial-btn.conflict { border-color: var(--warn); box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25); }
+.dial-btn.conflict .indicator { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+
+/* =========================================================
+   KEYPAD LAYOUT ADD-ON PANEL (HANDOFF BRIEF IMPLEMENTATION)
+   ========================================================= */
+.kp-page-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.kp-page-tab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-dim);
+  font: 700 12px/1 var(--font-ui);
+  padding: 6px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: .15s var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.kp-page-tab .swatch {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.kp-page-tab:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.kp-page-tab.active {
+  color: #fff;
+  background: linear-gradient(180deg, #7c6aff, #6554e6);
+  box-shadow: 0 2px 8px rgba(124, 106, 255, 0.35);
+}
+
+.kp-split {
+  display: grid;
+  grid-template-columns: 270px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .kp-split { grid-template-columns: 1fr; }
+}
+
+.kp-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kp-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 8px;
+  aspect-ratio: 1 / 1;
+}
+.kp-cell {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: .15s var(--ease);
+  text-align: center;
+  user-select: none;
+}
+.kp-cell:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.kp-cell.active {
+  border-color: var(--accent);
+  background: rgba(124, 106, 255, 0.14);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.kp-cell.clipboard-source {
+  border-style: dashed;
+  border-color: var(--warn);
+}
+.kp-cell .cid {
+  position: absolute;
+  top: 4px; left: 6px;
+  font: 700 9.5px/1 var(--font-mono);
+  color: var(--text-mute);
+}
+.kp-cell .home-tag {
+  position: absolute;
+  top: 4px; right: 5px;
+  font: 700 8.5px/1 var(--font-mono);
+  color: var(--accent);
+  opacity: 0.85;
+}
+.kp-cell .icon-tile {
+  width: 34px; height: 34px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 800 9.5px/1.1 var(--font-ui);
+  padding: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.kp-cell .cell-lbl {
+  font: 700 11px/1.15 var(--font-ui);
+  color: var(--text);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kp-cell-ops {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.kp-right-col {
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.kp-meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .kp-meta-row { grid-template-columns: 1fr; }
+}
+
+.kp-validation {
+  font: 600 12px/1.4 var(--font-mono);
+  padding: 8px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.75);
+}
+.kp-validation.ok {
+  color: #127553;
+  border-color: rgba(34, 185, 131, 0.4);
+  background: rgba(34, 185, 131, 0.08);
+}
+.kp-validation.err {
+  color: #b91c42;
+  border-color: rgba(255, 94, 122, 0.45);
+  background: rgba(255, 94, 122, 0.10);
+}
+.kp-validation.warn {
+  color: #8a5a00;
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.kp-stdout {
+  font: 500 12px/1.5 var(--font-mono);
+  background: #1e1b2e;
+  color: #e4dff8;
+  padding: 10px 12px;
+  border-radius: 10px;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  border: 1px solid rgba(124, 106, 255, 0.35);
+}
+
+/* =========================================================
+   LIBRARY
+   ========================================================= */
+.lib-filters { display: flex; flex-direction: column; gap: 8px; flex: none; }
+.chip-row { display: flex; gap: 5px; flex-wrap: wrap; max-height: 76px; overflow-y: auto; }
+
+.chip {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font: 700 11.5px/1 var(--font-ui);
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: .15s var(--ease);
+}
+.chip:hover { color: var(--text); border-color: var(--border-strong); }
+.chip.active {
+  color: #fff;
+  background: linear-gradient(180deg, #7c6aff, #6554e6);
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px -2px var(--accent-glow);
+}
+
+.lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 440px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.lib-list::-webkit-scrollbar { width: 8px; }
+.lib-list::-webkit-scrollbar-thumb { background: rgba(124, 106, 255, 0.22); border-radius: 8px; }
+
+.lib-item {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 9px 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: .15s var(--ease);
+}
+.lib-item:hover {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 16px -8px var(--accent-glow);
+}
+.lib-item .thumb {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex: none;
+}
+.lib-item .emoji-badge {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  background: rgba(124, 106, 255, 0.12);
+  border: 1px solid rgba(124, 106, 255, 0.22);
+  border-radius: 8px;
+  font-size: 18px;
+  flex: none;
+}
+.lib-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lib-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.lib-item-head .label { flex: 1; overflow-wrap: anywhere; }
+.lib-item-head .steps-count {
+  font: 700 11px/1 var(--font-mono);
+  color: var(--text-mute);
+  white-space: nowrap;
+}
+.lib-item-head .del {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--text-mute);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: .15s;
+}
+.lib-item-head .del:hover { color: var(--danger); background: rgba(255, 94, 122, 0.1); }
+
+.lib-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.lib-tag {
+  font: 700 10.5px/1 var(--font-mono);
+  color: var(--text-mute);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border);
+  padding: 3px 6px;
+  border-radius: 5px;
+}
+
+.lib-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-mute);
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 11px;
+}
+.lib-empty .hint { font-size: 12.5px; opacity: .75; margin-top: 4px; }
+
+/* =========================================================
+   LLM CARD
+   ========================================================= */
+.llm-body { display: flex; flex-direction: column; gap: 9px; }
+.llm-controls { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+#llm-out { min-height: 130px; }
+
+/* =========================================================
+   PROFILES
+   ========================================================= */
+.prof-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+.prof-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: .15s var(--ease);
+}
+.prof-item:hover { border-color: var(--accent); background: rgba(255, 255, 255, 0.9); }
+.prof-item.active {
+  border-color: var(--ok);
+  background: rgba(34, 185, 131, 0.08);
+  box-shadow: 0 0 0 1px rgba(34, 185, 131, 0.28);
+}
+.prof-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.prof-meta {
+  font: 700 11px/1 var(--font-mono);
+  color: var(--text-mute);
+}
+.prof-actions { display: flex; gap: 3px; }
+
+/* =========================================================
+   MODAL (button editor)
+   ========================================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(60, 50, 90, 0.32);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.modal-overlay[hidden] { display: none; }
+
+.modal {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 22px;
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  box-shadow:
+    0 30px 60px -20px rgba(80, 60, 140, 0.35),
+    0 8px 24px -8px rgba(80, 60, 140, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-head h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+}
+.modal-body { display: flex; flex-direction: column; gap: 14px; }
+.modal-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+/* image uploader */
+.img-uploader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(124, 106, 255, 0.06);
+  border: 1px dashed var(--border-strong);
+  border-radius: 11px;
+}
+.img-preview {
+  width: 64px; height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.7);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  flex: none;
+}
+.img-uploader-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.img-uploader-info .lbl { margin-bottom: 2px; }
+.img-uploader-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* steps */
+.steps-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.steps-list { display: flex; flex-direction: column; gap: 6px; }
+.step-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  background: rgba(250, 248, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 5px;
+}
+.step-row select { width: 125px; padding: 6px 8px; font-size: 13px; }
+.step-row input { flex: 1; padding: 6px 9px; font-size: 13.5px; }
+.step-empty {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-mute);
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 9px;
+}
+
+/* tabs */
+.ed-tabs {
+  display: flex;
+  gap: 3px;
+  background: rgba(124, 106, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+}
+.tab {
+  flex: 1;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+  font: 700 12px/1 var(--font-ui);
+  padding: 8px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: .15s var(--ease);
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  color: #fff;
+  background: linear-gradient(180deg, #7c6aff, #6554e6);
+  box-shadow: 0 2px 6px -2px var(--accent-glow);
+}
+.ed-panes { display: flex; flex-direction: column; }
+.ed-pane { display: none; }
+.ed-pane.active { display: block; }
+
+/* =========================================================
+   TOAST & BADGES
+   ========================================================= */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #7c6aff, #6554e6);
+  color: #fff;
+  font: 700 14px/1 var(--font-ui);
+  padding: 12px 20px;
+  border-radius: 999px;
+  box-shadow: 0 14px 32px -10px var(--accent-glow);
+  z-index: 300;
+  animation: toastIn .22s var(--ease);
+}
+.toast[hidden] { display: none; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+.badge-warn {
+  font: 700 11px/1 var(--font-mono);
+  color: #8a5a00;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.badge-info {
+  font: 700 11px/1 var(--font-mono);
+  color: var(--accent);
+  background: rgba(124, 106, 255, 0.12);
+  border: 1px solid rgba(124, 106, 255, 0.28);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+@media (max-width: 700px) {
+  .layout { grid-template-columns: 1fr; padding: 12px; }
+  .panel-toggles { order: 3; margin-left: 0; width: 100%; justify-content: space-between; }
+  .panel-toggle { flex: 1; justify-content: center; padding: 8px 6px; font-size: 11.5px; }
+  .topbar { gap: 8px; padding: 10px 14px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Solar system background -->
+<div class="space-bg">
+  <div class="orbit-line o1"></div>
+  <div class="orbit-line o2"></div>
+  <div class="orbit-line o3"></div>
+  <div class="sun"></div>
+  <div class="planet p1"></div>
+  <div class="planet p2"></div>
+  <div class="planet p3"></div>
+  <div class="planet p4"></div>
+  <div class="planet-ring"></div>
+</div>
+<div class="stars" aria-hidden="true"></div>
+
+<!-- =================== TOP BAR =================== -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">🔭</span>
+    <span class="brand-name">MX Console <b>Builder</b></span>
+    <span class="brand-ver">Logi Cool J</span>
+  </div>
+
+  <div class="panel-toggles">
+    <button class="panel-toggle active" data-panel-toggle="keypad"><span class="dot"></span>Keypad (.lp5)</button>
+    <button class="panel-toggle active" data-panel-toggle="console"><span class="dot"></span>Console</button>
+    <button class="panel-toggle active" data-panel-toggle="library"><span class="dot"></span>Library</button>
+    <button class="panel-toggle active" data-panel-toggle="profiles"><span class="dot"></span>Profiles</button>
+    <button class="panel-toggle active" data-panel-toggle="llm"><span class="dot"></span>LLM</button>
+  </div>
+
+  <div class="topbar-right">
+    <div class="runtime-toggle" role="group" aria-label="Runtime target">
+      <button class="rt-btn active" data-runtime="ahk" title="AutoHotkey v2">AHK</button>
+      <button class="rt-btn" data-runtime="ps" title="PowerShell 5.1">PS</button>
+    </div>
+    <button class="btn btn-sm" id="btn-load-sample" title="Load 10-page MX sample layout">✨ Load 10-Page Preset</button>
+    <button class="btn btn-sm" id="btn-export-yaml" title="Export keypad-layout.yaml">⬇ YAML</button>
+    <button class="btn btn-sm" id="btn-export-json" title="Export all profiles">⬇ JSON</button>
+    <button class="btn btn-sm" id="btn-export-images" title="Download all images">⬇ Images</button>
+    <button class="btn btn-sm" id="btn-import" title="Import JSON or YAML">⬆ Import</button>
+    <input type="file" id="file-import" accept=".json,.yaml,.yml" hidden>
+  </div>
+</header>
+
+<!-- =================== MAIN GRID (Draggable Cards) =================== -->
+<main class="layout" id="main-layout">
+
+  <!-- KEYPAD (.LP5) ADD-ON PANEL (From Handoff Brief) -->
+  <section class="card wide" id="panel-keypad" data-card-id="keypad">
+    <div class="card-head">
+      <div class="card-title">
+        <span class="card-grip" title="Drag card to reorder">⋮⋮</span>
+        <span class="dot dot-keypad"></span>
+        Keypad Layout Studio (.lp5 Add-on)
+      </div>
+      <div class="card-tools">
+        <span class="badge-info" title="Reminder: keep Home jump on button 8">💡 Home on 8</span>
+        <button class="btn btn-xs" id="kp-save-yaml" title="Validate and save keypad-layout.yaml">💾 Save YAML</button>
+        <button class="btn btn-xs btn-emerald" id="kp-build-lp5" title="Save keypad-layout.yaml and show the converter command">⚙ Build .lp5</button>
+      </div>
+    </div>
+
+    <!-- Page tabs 1..N -->
+    <div class="kp-page-tabs" id="kp-page-tabs"></div>
+
+    <div class="kp-split">
+      <!-- Left: 3x3 interactive keypad + Copy/Move/Swap -->
+      <div class="kp-left-col">
+        <div class="kp-mini-grid" id="kp-grid"></div>
+        <div class="kp-cell-ops">
+          <button class="btn btn-xs" id="kp-btn-copy" title="Copy selected button">⎘ Copy</button>
+          <button class="btn btn-xs" id="kp-btn-move" title="Cut/Move selected button to next clicked slot">✂ Move</button>
+          <button class="btn btn-xs" id="kp-btn-swap" title="Swap selected button with next clicked slot">⇄ Swap</button>
+          <button class="btn btn-xs btn-danger" id="kp-btn-clear" title="Clear selected button">✕ Clear</button>
+          <button class="btn btn-xs" id="kp-btn-undo" title="Undo last copy/move/swap/clear/drag" disabled>↶ Undo</button>
+        </div>
+        <div id="kp-op-status" class="lbl" style="color:var(--accent);min-height:14px;"></div>
+      </div>
+
+      <!-- Right: inline editor for active page & button -->
+      <div class="kp-right-col">
+        <div class="kp-meta-row">
+          <div>
+            <label class="lbl">Profile Name (.lp5 filename)</label>
+            <input type="text" id="kp-prof-name" class="input compact" style="width:100%;margin-top:4px;" placeholder="MX 10-Page Layout">
+          </div>
+          <div style="display:flex;gap:6px;">
+            <div style="flex:1;">
+              <label class="lbl" for="kp-prof-id" title="Seeds the .lp5 IDs. Leave blank to seed from the profile name (renaming then creates a new profile in Options+).">profile_id (optional)</label>
+              <input type="text" id="kp-prof-id" class="input compact" style="width:100%;margin-top:4px;" placeholder="(uses profile name)">
+            </div>
+            <div style="flex:1;">
+              <label class="lbl">Page Name</label>
+              <input type="text" id="kp-page-name" class="input compact" style="width:100%;margin-top:4px;" placeholder="Home">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label class="lbl">Button <span id="kp-btn-id-lbl">#0</span> Label (≤12 chars best for auto-icon)</label>
+            <input type="text" id="kp-btn-label" class="input compact" style="width:100%;margin-top:4px;" placeholder="DeepSeek">
+          </div>
+          <div style="width:88px;">
+            <label class="lbl">Emoji</label>
+            <input type="text" id="kp-btn-emoji" class="input compact" style="width:100%;margin-top:4px;text-align:center;" maxlength="4" placeholder="🚀">
+          </div>
+          <button class="btn btn-sm" id="kp-open-full-modal" title="Open full AHK/PS/Image modal for this button">Full Editor ↗</button>
+        </div>
+
+        <div class="steps-head">
+          <span class="lbl">Button Steps (runs in order; empty = blank key)</span>
+          <div style="display:flex;gap:5px;">
+            <button class="btn btn-xs" id="kp-quick-home" title="Set this button to go_to_page: 1">🏠 Set Go Home</button>
+            <button class="mini" id="kp-add-step" title="Add step">＋</button>
+          </div>
+        </div>
+
+        <div class="steps-list" id="kp-steps-list"></div>
+
+        <div id="kp-validation-box" class="kp-validation ok">✓ YAML contract valid. Ready to save or build.</div>
+        <div id="kp-stdout-box" class="kp-stdout" hidden></div>
+      </div>
+    </div>
+
+    <div class="card-foot">
+      <span>Drag cells to swap • Keys confirmed: KeyA-Z, Digit0-9, F1-F24, Return, Tab, Space, Escape, Backspace, Delete</span>
+      <span class="spacer"></span>
+      <span id="kp-bridge-status">Build: save YAML → python yaml2lp5.py</span>
+    </div>
+  </section>
+
+  <!-- CONSOLE -->
+  <section class="card" id="panel-console" data-card-id="console">
+    <div class="card-head">
+      <div class="card-title">
+        <span class="card-grip" title="Drag card to reorder">⋮⋮</span>
+        <span class="dot dot-accent"></span>
+        Console Layout
+      </div>
+      <div class="card-tools">
+        <select id="page-select" class="select compact"></select>
+        <button class="mini" id="btn-ren-page" title="Rename page">✎</button>
+        <button class="mini" id="btn-add-page" title="Add page">＋</button>
+        <button class="mini danger" id="btn-del-page" title="Delete page">🗑</button>
+      </div>
+    </div>
+    <div class="dial-grid" id="dial-grid"></div>
+    <div class="card-foot">
+      <span id="page-meta">—</span>
+      <span class="spacer"></span>
+      <span id="conflict-badge" class="badge-warn" hidden>⚠ duplicate steps</span>
+    </div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section class="card" id="panel-library" data-card-id="library">
+    <div class="card-head">
+      <div class="card-title">
+        <span class="card-grip" title="Drag card to reorder">⋮⋮</span>
+        <span class="dot dot-lib"></span>
+        Action Library
+      </div>
+      <div class="card-tools">
+        <button class="mini" id="btn-lib-clear" title="Clear library">🗑</button>
+      </div>
+    </div>
+    <div class="lib-filters">
+      <input type="text" id="lib-search" class="input" placeholder="🔎 Search label, tag, notes…">
+      <div class="chip-row" id="lib-chips"></div>
+    </div>
+    <div class="lib-list" id="lib-list"></div>
+    <div class="lib-empty" id="lib-empty">
+      <div>No saved actions yet.</div>
+      <div class="hint">Open a button in the console → Save to Library.</div>
+    </div>
+  </section>
+
+  <!-- PROFILES -->
+  <section class="card" id="panel-profiles" data-card-id="profiles">
+    <div class="card-head">
+      <div class="card-title">
+        <span class="card-grip" title="Drag card to reorder">⋮⋮</span>
+        <span class="dot dot-prof"></span>
+        Profiles
+      </div>
+      <div class="card-tools">
+        <button class="mini" id="btn-prof-new" title="New profile">＋</button>
+      </div>
+    </div>
+    <div class="prof-list" id="prof-list"></div>
+    <div class="card-foot"><span id="prof-count">0 profiles</span></div>
+  </section>
+
+  <!-- LLM -->
+  <section class="card" id="panel-llm" data-card-id="llm">
+    <div class="card-head">
+      <div class="card-title">
+        <span class="card-grip" title="Drag card to reorder">⋮⋮</span>
+        <span class="dot dot-llm"></span>
+        LLM Prompt & Local Assistant
+      </div>
+      <div class="card-tools">
+        <button class="mini" id="btn-llm-copy" title="Copy prompt">📋</button>
+      </div>
+    </div>
+    <div class="llm-body">
+      <label class="lbl">Describe the macro or YAML button</label>
+      <textarea id="llm-input" class="input" rows="2"
+        placeholder="e.g. Open Windows Terminal in C:\Projects, type git status, press Enter"></textarea>
+      <div class="llm-controls">
+        <select id="llm-target" class="select compact">
+          <option value="yaml">Keypad YAML Steps</option>
+          <option value="ahk">AutoHotkey v2</option>
+          <option value="ps">PowerShell 5.1</option>
+          <option value="both">AHK + PowerShell</option>
+        </select>
+        <button class="btn btn-sm btn-primary" id="btn-llm-build">Build Prompt</button>
+        <button class="btn btn-sm" id="btn-llm-ollama" title="Send directly to local Ollama (http://localhost:11434)">⚡ Ask Local Ollama</button>
+        <input type="text" id="llm-model" class="input compact" style="width:170px" aria-label="Ollama model" placeholder="qwen2.5-coder:latest">
+      </div>
+      <label class="lbl">Prompt / Local LLM Output</label>
+      <textarea id="llm-out" class="code" spellcheck="false" placeholder="Prompt or local LLM output will appear here…"></textarea>
+    </div>
+  </section>
+
+</main>
+
+<!-- =================== BUTTON EDITOR MODAL =================== -->
+<div class="modal-overlay" id="editor-modal" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Edit Button <span id="ed-index">#0</span></h3>
+      <button class="mini" id="ed-close" title="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- image uploader -->
+      <div class="img-uploader">
+        <img id="ed-img-preview" class="img-preview" alt="" hidden>
+        <div id="ed-emoji-preview" class="img-preview">＋</div>
+        <div class="img-uploader-info">
+          <label class="lbl">Icon / Image</label>
+          <div class="img-uploader-actions">
+            <button class="btn btn-sm" id="ed-upload">⬆ Upload</button>
+            <button class="btn btn-sm" id="ed-download" hidden>⬇ Save</button>
+            <button class="btn btn-sm btn-danger" id="ed-remove-img" hidden>✕ Remove</button>
+            <input type="file" id="ed-file" accept="image/*" hidden>
+          </div>
+        </div>
+        <input type="text" id="ed-emoji" class="input emoji" maxlength="4" placeholder="🧠" aria-label="Emoji fallback">
+      </div>
+
+      <!-- label + tags -->
+      <div style="display:flex;gap:10px;">
+        <input type="text" id="ed-label" class="input grow" placeholder="Button label (≤12 chars recommended)">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <input type="text" id="ed-tags" class="input grow" placeholder="tags: cursor, cline, dev">
+      </div>
+
+      <!-- steps -->
+      <div class="steps-head">
+        <span class="lbl">Steps (YAML)</span>
+        <button class="mini" id="ed-add-step" title="Add step">＋</button>
+      </div>
+      <div class="steps-list" id="ed-steps"></div>
+
+      <!-- tabs -->
+      <div class="ed-tabs" role="tablist">
+        <button class="tab active" data-tab="ahk">AHK</button>
+        <button class="tab" data-tab="ps">PS</button>
+        <button class="tab" data-tab="recipe">Recipe</button>
+        <button class="tab" data-tab="notes">Notes</button>
+      </div>
+      <div class="ed-panes">
+        <div class="ed-pane active" data-pane="ahk"><textarea id="ed-ahk" class="code" spellcheck="false" placeholder="; AutoHotkey v2"></textarea></div>
+        <div class="ed-pane" data-pane="ps"><textarea id="ed-ps" class="code" spellcheck="false" placeholder="# PowerShell 5.1"></textarea></div>
+        <div class="ed-pane" data-pane="recipe"><textarea id="ed-recipe" class="code" spellcheck="false" placeholder="Options+ setup recipe…"></textarea></div>
+        <div class="ed-pane" data-pane="notes"><textarea id="ed-notes" class="code" spellcheck="false" placeholder="Notes / gotchas"></textarea></div>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-sm btn-primary" id="ed-save-lib">💾 Save to Library</button>
+      <button class="btn btn-sm" id="ed-copy-code">📋 Copy code</button>
+      <button class="btn btn-sm btn-danger" id="ed-clear">Clear</button>
+      <span class="spacer"></span>
+      <button class="btn btn-sm" id="ed-mark-tested">✓ Tested</button>
+    </div>
+  </div>
+</div>
+
+<!-- generic confirm modal -->
+<div class="modal-overlay" id="confirm-modal" hidden>
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <h3 id="confirm-title">Confirm</h3>
+      <button class="mini" id="confirm-close" title="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="confirm-body"></div>
+    </div>
+    <div class="modal-foot">
+      <span class="spacer"></span>
+      <button class="btn" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-primary" id="confirm-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* =========================================================
+   CONSTANTS & YAML CONTRACT RULES (From HANDOUT-keypad-addon.md)
+   ========================================================= */
+const LS_KEY = "mx-console-v3";
+const SCHEMA_VERSION = 3;
+
+const PAGE_COLORS = [
+  "#2D3A4A", "#1F4E8C", "#3C3C8C", "#1E5E3A", "#7A4A12",
+  "#6B1F4E", "#4A5A1E", "#2A5A6A", "#5A2A2A", "#444444"
+];
+
+const STEP_TYPES = [
+  { type: "key", label: "key", placeholder: "Ctrl+Shift+T" },
+  { type: "text", label: "text", placeholder: "git status" },
+  { type: "wait", label: "wait (ms)", placeholder: "500" },
+  { type: "url", label: "url", placeholder: "https://…" },
+  { type: "open", label: "open", placeholder: "C:\\path\\app.exe" },
+  { type: "run", label: "run", placeholder: "C:\\path\\script.bat" },
+  { type: "go_to_page", label: "go_to_page", placeholder: "1" }
+];
+
+const KNOWN_MODS = new Set(["ctrl", "control", "shift", "alt", "win", "windows"]);
+const KNOWN_KEYS = new Set([
+  "enter", "return", "tab", "space", ".", "esc", "escape",
+  "left", "right", "up", "down", "`", "backspace", "delete"
+]);
+
+// Secret patterns to refuse in `text` steps (Rule 4: no API keys/passwords)
+const SECRET_PATTERNS = [
+  /\bsk-[a-zA-Z0-9_-]{16,}\b/,
+  /\bgsk_[a-zA-Z0-9]{20,}\b/,
+  /\bgithub_pat_[a-zA-Z0-9_]{20,}\b/,
+  /\bhf_[a-zA-Z0-9]{20,}\b/,
+  /\bAKIA[0-9A-Z]{16}\b/,
+  /\bghp_[a-zA-Z0-9]{20,}\b/,
+  /\bAIza[0-9A-Za-z_-]{30,}\b/,
+  /\bxox[baprs]-[0-9a-zA-Z-]{10,}\b/,
+  /password\s*[:=]\s*\S+/i,
+  /api[_-]?key\s*[:=]\s*\S+/i
+];
+
+/* =========================================================
+   STATE (Preserves existing v3 localStorage format)
+   ========================================================= */
+function emptyButton(i) {
+  return {
+    id: i,
+    emoji: "",
+    label: "",
+    imageData: null,
+    tags: [],
+    steps: [],
+    ahk: "", ps: "", recipe: "", notes: "",
+    testedAt: null
+  };
+}
+function emptyPage(name) {
+  return {
+    id: "pg-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+    name: name || "Untitled",
+    buttons: Array.from({ length: 9 }, (_, i) => emptyButton(i))
+  };
+}
+function defaultProfile(name) {
+  const p = {
+    id: "prof-" + uid(),
+    lp5Id: "",
+    name: name || "MX 10-Page Layout",
+    createdAt: new Date().toISOString(),
+    pages: [emptyPage("Home")],
+    activePageId: null,
+    activeButtonIndex: 0,
+    panelVisibility: { keypad: true, console: true, library: true, profiles: true, llm: true }
+  };
+  p.activePageId = p.pages[0].id;
+  return p;
+}
+
+const LEGACY_BUILDER_KEY = "mx-console-builder-state"; // older dark mx-console-builder.html
+
+function readStoredJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return { status: "missing", raw: null, value: null };
+    try { return { status: "ok", raw, value: JSON.parse(raw) }; }
+    catch { return { status: "invalid-json", raw, value: null }; }
+  } catch { return { status: "unavailable", raw: null, value: null }; }
+}
+
+// Older builder stored { pages:[{name, buttons:[{emoji,label,actionType,action}]}] }.
+function legacyBuilderToProfile(old, name) {
+  const p = defaultProfile(name || "Imported (old builder)");
+  p.pages = (old.pages || []).map(op => {
+    const pg = emptyPage(op.name || "Page");
+    (op.buttons || []).slice(0, 9).forEach((ob, i) => {
+      if (!ob) return;
+      const b = pg.buttons[i];
+      b.emoji = ob.emoji || "";
+      b.label = ob.label || "";
+      const v = String(ob.action || "").trim();
+      if (!v) return;
+      if (ob.actionType === "keystroke") b.steps = [{ type: "key", value: v }];
+      else if (ob.actionType === "url") b.steps = [{ type: "url", value: v }];
+      else if (ob.actionType === "app") b.steps = [{ type: "open", value: v }];
+      else { b.ps = v; b.notes = "Imported PowerShell command: save it as a .ps1/.cmd and point a run step at it."; }
+    });
+    return pg;
+  });
+  if (!p.pages.length) p.pages = [emptyPage("Home")];
+  p.activePageId = p.pages[0].id;
+  return p;
+}
+
+function loadState() {
+  const r = readStoredJson(LS_KEY);
+  if (r.status === "ok" && r.value && r.value.version === SCHEMA_VERSION && Array.isArray(r.value.profiles)) {
+    return { data: r.value };
+  }
+  if (r.status === "missing") {
+    const legacy = readStoredJson(LEGACY_BUILDER_KEY);
+    if (legacy.status === "ok" && legacy.value && Array.isArray(legacy.value.pages)) {
+      return { data: null, legacy: legacy.value };
+    }
+    return { data: null };
+  }
+  // Present but unreadable or a different version: keep a recovery copy, never overwrite silently.
+  if (r.raw !== null) {
+    try { localStorage.setItem(LS_KEY + ".recovery-" + Date.now(), r.raw); } catch {}
+  }
+  return { data: null, recovered: r.status };
+}
+function persist() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(STATE.data)); return true; }
+  catch (e) {
+    toast("⚠ Could not save to browser storage (full or blocked). Export a JSON backup.", 4000);
+    return false;
+  }
+}
+
+const STATE = {
+  data: null,
+  clipboardOp: null, // { mode: 'copy'|'move'|'swap', pageId, index, buttonData }
+  init() {
+    const loaded = loadState();
+    let d = loaded.data;
+    if (!d) {
+      const p = loaded.legacy ? legacyBuilderToProfile(loaded.legacy) : defaultProfile();
+      if (loaded.recovered) setTimeout(() => toast("⚠ Saved data was unreadable — kept a recovery copy in storage and started fresh.", 5000), 300);
+      if (loaded.legacy) setTimeout(() => toast("Imported layout from the older MX Console Builder.", 3500), 300);
+      d = {
+        version: SCHEMA_VERSION,
+        activeProfileId: p.id,
+        profiles: [p],
+        savedActions: [],
+        runtime: "ahk",
+        filters: { search: "", tag: "all" },
+        cardOrder: ["keypad", "console", "library", "profiles", "llm"]
+      };
+    }
+    // Ensure keypad panel visibility defaults to true on upgraded saves
+    d.profiles.forEach(p => {
+      p.panelVisibility = Object.assign(
+        { keypad: true, console: true, library: true, profiles: true, llm: true },
+        p.panelVisibility || {}
+      );
+      if (p.activeButtonIndex === null || p.activeButtonIndex === undefined) {
+        p.activeButtonIndex = 0;
+      }
+      // v3 saves from the original builder used the internal id as the converter id.
+      if (p.lp5Id === undefined) p.lp5Id = p.id === "mx-main" ? "mx-main" : "";
+      (p.pages || []).forEach(pg => (pg.buttons || []).forEach(b => { delete b._conflict; }));
+    });
+    if (!d.cardOrder) d.cardOrder = ["keypad", "console", "library", "profiles", "llm"];
+    this.data = d;
+    persist();
+  },
+  activeProfile() {
+    return this.data.profiles.find(p => p.id === this.data.activeProfileId) || this.data.profiles[0];
+  },
+  activePage() {
+    const p = this.activeProfile();
+    return p.pages.find(x => x.id === p.activePageId) || p.pages[0];
+  },
+  activeBtnIndex() {
+    const p = this.activeProfile();
+    return Number.isInteger(p.activeButtonIndex) && p.activeButtonIndex >= 0 && p.activeButtonIndex <= 8
+      ? p.activeButtonIndex
+      : 0;
+  },
+  getButton(i) { return this.activePage().buttons[i]; }
+};
+STATE.init();
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function toast(msg, ms = 1900) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { t.hidden = true; }, ms);
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function resizeImage(file, maxSize = 128) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function download(filename, content, mime = "application/octet-stream") {
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [meta, b64] = dataUrl.split(",");
+  const mime = (meta.match(/data:(.*?);/) || [, "image/png"])[1];
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+/* =========================================================
+   VALIDATION ENGINE (Enforces HANDOUT-keypad-addon.md rules)
+   ========================================================= */
+function validateProfileForYaml(profile) {
+  const errors = [];
+  const warnings = [];
+  const unverifiedKeys = new Set();
+
+  if (!profile.pages || !profile.pages.length) {
+    errors.push("Profile must have at least 1 page.");
+  }
+
+  profile.pages.forEach((page, pi) => {
+    const pNum = pi + 1;
+    (page.buttons || []).forEach((btn, bi) => {
+      const steps = btn.steps || [];
+      if (!steps.length) return;
+
+      if (btn.label && btn.label.length > 12) {
+        warnings.push(`P${pNum} B${bi} ("${btn.label}"): >12 chars may wrap tightly on icon.`);
+      }
+
+      // Rule: go_to_page must be the button's only step
+      if (steps.length > 1 && steps.some(s => s.type === "go_to_page")) {
+        errors.push(`Page ${pNum} Button ${bi}: 'go_to_page' must be the ONLY step on a button.`);
+      }
+
+      steps.forEach((s, si) => {
+        if (!STEP_TYPES.some(st => st.type === s.type)) {
+          errors.push(`Page ${pNum} Button ${bi} Step ${si + 1}: Unknown step type '${s.type}'.`);
+        }
+        const val = String(s.value ?? "").trim();
+        if (!val) {
+          errors.push(`Page ${pNum} Button ${bi} Step ${si + 1} (${s.type}): Value is empty.`);
+          return;
+        }
+        if (s.type === "wait") {
+          const n = Number(val);
+          if (!Number.isInteger(n) || n < 0) {
+            errors.push(`Page ${pNum} Button ${bi}: 'wait' must be a positive integer (ms).`);
+          }
+        }
+        if (s.type === "go_to_page") {
+          const n = Number(val);
+          if (!Number.isInteger(n) || n < 1 || n > profile.pages.length) {
+            errors.push(`Page ${pNum} Button ${bi}: 'go_to_page' target (${val}) out of range 1..${profile.pages.length}.`);
+          }
+        }
+        if (SECRET_PATTERNS.some(rx => rx.test(val))) {
+          // Never echo the value itself.
+          errors.push(`Page ${pNum} Button ${bi} Step ${si + 1}: looks like an API key/password — refused (.lp5 is a plain zip).`);
+        }
+        if (s.type === "key") {
+          const parts = val === "+" ? ["+"] : val.split("+").map(x => x.trim()).filter(Boolean);
+          const last = parts[parts.length - 1] || "";
+          const lk = last.toLowerCase();
+          const badMods = parts.slice(0, -1).filter(m => !KNOWN_MODS.has(m.toLowerCase()));
+          if (badMods.length) {
+            errors.push(`Page ${pNum} Button ${bi} Step ${si + 1}: unknown modifier '${badMods.join("+")}' (use Ctrl, Shift, Alt, Win).`);
+          }
+          const isAlpha = last.length === 1 && /[a-z]/i.test(last);
+          const isDigit = last.length === 1 && /\d/.test(last);
+          const isFKey = /^[Ff]\d{1,2}$/.test(last);
+          if (!isAlpha && !isDigit && !isFKey && !KNOWN_KEYS.has(lk)) {
+            unverifiedKeys.add(last);
+          }
+          if (["left", "right", "up", "down", "`"].includes(lk)) {
+            unverifiedKeys.add(last);
+          }
+        }
+      });
+    });
+  });
+
+  if (unverifiedKeys.size) {
+    warnings.push(`Unverified key names (test in Options+): ${Array.from(unverifiedKeys).join(", ")}`);
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+function showValidation(v, okText) {
+  const vbox = $("kp-validation-box");
+  const more = (list) => list.length > 1 ? ` (+${list.length - 1} more)` : "";
+  if (!v.valid) { vbox.className = "kp-validation err"; vbox.textContent = "✕ " + v.errors[0] + more(v.errors); }
+  else if (v.warnings.length) { vbox.className = "kp-validation warn"; vbox.textContent = "⚠ " + v.warnings[0] + more(v.warnings); }
+  else { vbox.className = "kp-validation ok"; vbox.textContent = okText; }
+}
+
+/* =========================================================
+   CONFIRM MODAL
+   ========================================================= */
+function confirmModal(title, bodyHTML, onOk, okLabel = "OK") {
+  $("confirm-title").textContent = title;
+  $("confirm-body").innerHTML = bodyHTML;
+  $("confirm-ok").textContent = okLabel;
+  $("confirm-modal").hidden = false;
+
+  const cleanup = () => { $("confirm-modal").hidden = true; };
+  $("confirm-ok").onclick = () => {
+    try { onOk(); cleanup(); } catch (e) { alert(e.message); }
+  };
+  $("confirm-cancel").onclick = cleanup;
+  $("confirm-close").onclick = cleanup;
+  $("confirm-modal").onclick = (e) => {
+    if (e.target === $("confirm-modal")) cleanup();
+  };
+}
+
+/* =========================================================
+   PANEL VISIBILITY & DRAGGABLE CARDS
+   ========================================================= */
+function getVis() {
+  return Object.assign(
+    { keypad: true, console: true, library: true, profiles: true, llm: true },
+    STATE.activeProfile().panelVisibility || {}
+  );
+}
+function setVis(name, val) {
+  const vis = getVis();
+  vis[name] = val;
+  STATE.activeProfile().panelVisibility = vis;
+  persist();
+}
+function applyVisibility() {
+  const vis = getVis();
+  ["keypad", "console", "library", "profiles", "llm"].forEach(name => {
+    const panel = document.getElementById("panel-" + name);
+    if (!panel) return;
+    panel.hidden = !vis[name];
+    const toggle = document.querySelector(`[data-panel-toggle="${name}"]`);
+    if (toggle) toggle.classList.toggle("active", !!vis[name]);
+  });
+}
+
+function applyCardOrder() {
+  const layout = $("main-layout");
+  const order = STATE.data.cardOrder || ["keypad", "console", "library", "profiles", "llm"];
+  order.forEach(id => {
+    const el = document.querySelector(`.card[data-card-id="${id}"]`);
+    if (el) layout.appendChild(el);
+  });
+}
+
+function initDraggableCards() {
+  const layout = $("main-layout");
+  let draggedCard = null;
+
+  layout.querySelectorAll(".card-grip").forEach(grip => {
+    const card = grip.closest(".card");
+    grip.addEventListener("mousedown", () => card.setAttribute("draggable", "true"));
+    grip.addEventListener("mouseup", () => card.removeAttribute("draggable"));
+  });
+
+  layout.addEventListener("dragstart", (e) => {
+    const card = e.target.closest(".card[draggable='true']");
+    if (!card) return;
+    draggedCard = card;
+    card.classList.add("dragging-card");
+    e.dataTransfer.effectAllowed = "move";
+  });
+
+  layout.addEventListener("dragend", () => {
+    if (draggedCard) {
+      draggedCard.classList.remove("dragging-card");
+      draggedCard.removeAttribute("draggable");
+      draggedCard = null;
+    }
+    layout.querySelectorAll(".card").forEach(c => c.classList.remove("drag-over-card"));
+  });
+
+  layout.addEventListener("dragover", (e) => {
+    if (!draggedCard) return;
+    e.preventDefault();
+    const target = e.target.closest(".card");
+    if (!target || target === draggedCard) return;
+    layout.querySelectorAll(".card").forEach(c => c.classList.remove("drag-over-card"));
+    target.classList.add("drag-over-card");
+  });
+
+  layout.addEventListener("drop", (e) => {
+    if (!draggedCard) return;
+    e.preventDefault();
+    const target = e.target.closest(".card");
+    if (!target || target === draggedCard) return;
+    target.classList.remove("drag-over-card");
+
+    const cards = Array.from(layout.querySelectorAll(".card"));
+    const fromIdx = cards.indexOf(draggedCard);
+    const toIdx = cards.indexOf(target);
+    if (fromIdx < toIdx) target.after(draggedCard);
+    else target.before(draggedCard);
+
+    STATE.data.cardOrder = Array.from(layout.querySelectorAll(".card")).map(c => c.dataset.cardId);
+    persist();
+    toast("Card layout saved");
+  });
+}
+
+document.querySelectorAll(".panel-toggle").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const name = btn.dataset.panelToggle;
+    const vis = getVis();
+    setVis(name, !vis[name]);
+    applyVisibility();
+  });
+});
+
+/* =========================================================
+   RENDER ALL
+   ========================================================= */
+function renderAll() {
+  applyCardOrder();
+  renderTopbar();
+  renderPages();
+  renderConsole();
+  renderKeypadPanel();
+  renderLibrary();
+  renderProfiles();
+  applyVisibility();
+}
+
+function renderTopbar() {
+  document.querySelectorAll(".rt-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.runtime === STATE.data.runtime);
+  });
+}
+
+function renderPages() {
+  const sel = $("page-select");
+  const ap = STATE.activeProfile();
+  sel.innerHTML = ap.pages.map((p, i) =>
+    `<option value="${esc(p.id)}" ${p.id === ap.activePageId ? "selected" : ""}>${i + 1}. ${esc(p.name)}</option>`
+  ).join("");
+  const idx = ap.pages.findIndex(p => p.id === ap.activePageId) + 1;
+  $("page-meta").textContent = `Page ${idx} / ${ap.pages.length}`;
+}
+
+function renderConsole() {
+  const grid = $("dial-grid");
+  const page = STATE.activePage();
+  const ap = STATE.activeProfile();
+  const activeIdx = STATE.activeBtnIndex();
+
+  const sigs = {};
+  const conflicts = new Set();
+  page.buttons.forEach((b, i) => {
+    if (!b.steps || !b.steps.length) return;
+    const sig = JSON.stringify(b.steps.map(s => [s.type, s.value]));
+    if (sigs[sig] !== undefined) {
+      conflicts.add(i);
+      conflicts.add(sigs[sig]);
+    } else {
+      sigs[sig] = i;
+    }
+  });
+
+  grid.innerHTML = page.buttons.map((b, i) => {
+    const isActive = activeIdx === i;
+    const isEmpty = !b.label && !b.emoji && !b.imageData && (!b.steps || !b.steps.length);
+    const hasAction = b.steps && b.steps.length > 0;
+    const conflict = conflicts.has(i) ? " conflict" : "";
+
+    const iconHTML = b.imageData
+      ? `<img class="thumb" src="${esc(b.imageData)}" alt="">`
+      : `<span class="emoji">${esc(b.emoji || (hasAction ? "⚡" : "＋"))}</span>`;
+
+    const homeReminder = i === 8 ? `<span class="home-hint" title="Convention: Home on 8">H8</span>` : "";
+    const stepSummary = hasAction
+      ? `<span class="step-pill">${b.steps.length === 1 ? esc(b.steps[0].type) : b.steps.length + " steps"}</span>`
+      : "";
+
+    return `
+      <div class="dial-btn${isActive ? " active" : ""}${isEmpty ? " empty" : ""}${conflict}" data-index="${i}" draggable="true"
+           tabindex="0" role="button" aria-label="Edit button ${i}: ${esc(b.label || "empty")}">
+        <span class="num">${i}</span>
+        ${homeReminder}
+        ${iconHTML}
+        <span class="label">${esc(b.label || "Empty")}</span>
+        ${stepSummary}
+        ${hasAction ? '<span class="indicator"></span>' : ''}
+      </div>
+    `;
+  }).join("");
+
+  $("conflict-badge").hidden = conflicts.size === 0;
+}
+
+/* =========================================================
+   KEYPAD (.LP5) STUDIO PANEL RENDER & LOGIC
+   ========================================================= */
+function renderKeypadPanel() {
+  const ap = STATE.activeProfile();
+  const page = STATE.activePage();
+  const pageIdx = ap.pages.findIndex(p => p.id === page.id);
+  const btnIdx = STATE.activeBtnIndex();
+  const btn = page.buttons[btnIdx];
+  const pageColor = PAGE_COLORS[pageIdx % PAGE_COLORS.length];
+
+  // Page tabs
+  const tabsEl = $("kp-page-tabs");
+  tabsEl.innerHTML = ap.pages.map((p, i) => {
+    const col = PAGE_COLORS[i % PAGE_COLORS.length];
+    const active = p.id === page.id ? " active" : "";
+    return `<button class="kp-page-tab${active}" data-page-id="${esc(p.id)}">
+      <span class="swatch" style="background:${col}"></span>
+      ${i + 1}. ${esc(p.name)}
+    </button>`;
+  }).join("") + `<button class="mini" id="kp-tab-add-page" title="Add page">＋</button>`;
+
+  // Left 3x3 mini grid with live Loupedeck colored icon tile preview
+  const kpGrid = $("kp-grid");
+  kpGrid.innerHTML = page.buttons.map((b, i) => {
+    const isActive = i === btnIdx;
+    const isClipSource = STATE.clipboardOp && STATE.clipboardOp.pageId === page.id && STATE.clipboardOp.index === i;
+    const tileText = (b.label || "").trim().slice(0, 12) || (b.steps?.length ? "ACT" : "—");
+    return `
+      <div class="kp-cell${isActive ? " active" : ""}${isClipSource ? " clipboard-source" : ""}" data-kp-index="${i}" draggable="true"
+           tabindex="0" role="button" aria-pressed="${isActive}" aria-label="Button ${i}: ${esc(b.label || "empty")}">
+        <span class="cid">${i}</span>
+        ${i === 8 ? '<span class="home-tag">🏠8</span>' : ''}
+        <div class="icon-tile" style="background:${b.steps?.length || b.label ? pageColor : 'rgba(140,140,190,0.32)'}">
+          ${esc(tileText)}
+        </div>
+        <span class="cell-lbl">${esc(b.label || "Empty")}</span>
+      </div>
+    `;
+  }).join("");
+
+  // Right form inputs
+  if (document.activeElement !== $("kp-prof-name")) $("kp-prof-name").value = ap.name || "";
+  if (document.activeElement !== $("kp-prof-id")) $("kp-prof-id").value = ap.lp5Id || "";
+  if (document.activeElement !== $("kp-page-name")) $("kp-page-name").value = page.name || "";
+  $("kp-btn-id-lbl").textContent = `#${btnIdx}${btnIdx === 8 ? " (Home slot reminder)" : ""}`;
+  if (document.activeElement !== $("kp-btn-label")) $("kp-btn-label").value = btn.label || "";
+  if (document.activeElement !== $("kp-btn-emoji")) $("kp-btn-emoji").value = btn.emoji || "";
+
+  // Render inline steps
+  const list = $("kp-steps-list");
+  if (!btn.steps || !btn.steps.length) {
+    list.innerHTML = `<div class="step-empty">Empty button ([] in YAML). Click ＋ to add a step.</div>`;
+  } else {
+    list.innerHTML = btn.steps.map((s, idx) => `
+      <div class="step-row" data-kp-step-idx="${idx}">
+        <select data-act="type">${STEP_TYPES.map(st =>
+          `<option value="${st.type}" ${st.type === s.type ? "selected" : ""}>${st.label}</option>`
+        ).join("")}</select>
+        <input type="text" data-act="value" value="${esc(s.value)}" placeholder="${STEP_TYPES.find(x => x.type === s.type)?.placeholder || ""}">
+        <button class="mini" data-act="up" title="Move up">↑</button>
+        <button class="mini" data-act="down" title="Move down">↓</button>
+        <button class="mini danger" data-act="del" title="Remove step">✕</button>
+      </div>
+    `).join("");
+  }
+
+  showValidation(validateProfileForYaml(ap), `✓ YAML valid (${ap.pages.length} pages, button #${btnIdx} ready).`);
+  $("kp-btn-undo").disabled = !STATE.undo || STATE.undo.profileId !== ap.id;
+}
+
+/* Undo (one level) for copy/move/swap/clear/drag */
+function snapshotForUndo(label) {
+  const ap = STATE.activeProfile();
+  STATE.undo = { profileId: ap.id, label, pages: JSON.parse(JSON.stringify(ap.pages)) };
+}
+$("kp-btn-undo").addEventListener("click", () => {
+  const ap = STATE.activeProfile();
+  if (!STATE.undo || STATE.undo.profileId !== ap.id) return;
+  ap.pages = STATE.undo.pages;
+  if (!ap.pages.some(p => p.id === ap.activePageId)) ap.activePageId = ap.pages[0].id;
+  const label = STATE.undo.label;
+  STATE.undo = null;
+  persist();
+  renderAll();
+  toast("Undid " + label);
+});
+
+function cancelClipboardOp() {
+  if (!STATE.clipboardOp) return false;
+  STATE.clipboardOp = null;
+  $("kp-op-status").textContent = "";
+  renderKeypadPanel();
+  return true;
+}
+function isEmptyButton(b) {
+  return !b || (!b.label && !b.emoji && !b.imageData && !(b.steps && b.steps.length));
+}
+
+/* Keypad page tabs & inline events */
+$("kp-page-tabs").addEventListener("click", (e) => {
+  if (e.target.closest("#kp-tab-add-page")) {
+    $("btn-add-page").click();
+    return;
+  }
+  const tab = e.target.closest(".kp-page-tab");
+  if (!tab) return;
+  const ap = STATE.activeProfile();
+  ap.activePageId = tab.dataset.pageId;
+  persist();
+  renderAll();
+});
+
+$("kp-grid").addEventListener("click", (e) => {
+  const cell = e.target.closest(".kp-cell");
+  if (!cell) return;
+  const targetIdx = Number(cell.dataset.kpIndex);
+  const ap = STATE.activeProfile();
+  const page = STATE.activePage();
+
+  // Handle pending Copy / Move / Swap operation
+  if (STATE.clipboardOp) {
+    const op = STATE.clipboardOp;
+    const srcPage = ap.pages.find(p => p.id === op.pageId) || page;
+    const srcBtn = srcPage.buttons[op.index];
+    const dstBtn = page.buttons[targetIdx];
+
+    if (srcPage.id === page.id && op.index === targetIdx) {
+      cancelClipboardOp();
+      toast("Same button — nothing to do");
+      return;
+    }
+    if (op.mode !== "swap" && !isEmptyButton(dstBtn) &&
+        !confirm(`Button #${targetIdx} ("${dstBtn.label || "unnamed"}") is not empty. Replace it?`)) {
+      return; // keep the operation armed so another destination can be picked
+    }
+    snapshotForUndo(op.mode);
+
+    if (op.mode === "copy") {
+      page.buttons[targetIdx] = JSON.parse(JSON.stringify(srcBtn));
+      page.buttons[targetIdx].id = targetIdx;
+      toast(`Copied to button #${targetIdx}`);
+    } else if (op.mode === "move") {
+      page.buttons[targetIdx] = JSON.parse(JSON.stringify(srcBtn));
+      page.buttons[targetIdx].id = targetIdx;
+      srcPage.buttons[op.index] = emptyButton(op.index);
+      toast(`Moved to button #${targetIdx}`);
+    } else if (op.mode === "swap") {
+      const tmp = JSON.parse(JSON.stringify(dstBtn));
+      page.buttons[targetIdx] = JSON.parse(JSON.stringify(srcBtn));
+      page.buttons[targetIdx].id = targetIdx;
+      srcPage.buttons[op.index] = tmp;
+      srcPage.buttons[op.index].id = op.index;
+      toast(`Swapped #${op.index} ⇄ #${targetIdx}`);
+    }
+    STATE.clipboardOp = null;
+    $("kp-op-status").textContent = "";
+    ap.activeButtonIndex = targetIdx;
+    persist();
+    renderAll();
+    return;
+  }
+
+  ap.activeButtonIndex = targetIdx;
+  persist();
+  renderConsole();
+  renderKeypadPanel();
+});
+
+/* Drag-and-drop cell swapping on Console and Keypad grids */
+function bindCellDragSwap(gridEl, attrName) {
+  let dragSrcIndex = null;
+  gridEl.addEventListener("dragstart", (e) => {
+    const cell = e.target.closest(`[${attrName}]`);
+    if (!cell) return;
+    dragSrcIndex = Number(cell.getAttribute(attrName));
+    e.dataTransfer.effectAllowed = "move";
+  });
+  gridEl.addEventListener("dragover", (e) => {
+    const cell = e.target.closest(`[${attrName}]`);
+    if (!cell || dragSrcIndex === null) return;
+    e.preventDefault();
+    cell.classList.add("drag-over-cell");
+  });
+  gridEl.addEventListener("dragend", () => {
+    dragSrcIndex = null;
+    gridEl.querySelectorAll(".drag-over-cell").forEach(c => c.classList.remove("drag-over-cell"));
+  });
+  gridEl.addEventListener("dragleave", (e) => {
+    const cell = e.target.closest(`[${attrName}]`);
+    if (cell) cell.classList.remove("drag-over-cell");
+  });
+  gridEl.addEventListener("drop", (e) => {
+    const cell = e.target.closest(`[${attrName}]`);
+    if (!cell || dragSrcIndex === null) return;
+    e.preventDefault();
+    cell.classList.remove("drag-over-cell");
+    const dstIndex = Number(cell.getAttribute(attrName));
+    if (dstIndex === dragSrcIndex) return;
+
+    const page = STATE.activePage();
+    const srcIndex = dragSrcIndex;
+    snapshotForUndo("drag swap");
+    const tmp = JSON.parse(JSON.stringify(page.buttons[dstIndex]));
+    page.buttons[dstIndex] = JSON.parse(JSON.stringify(page.buttons[dragSrcIndex]));
+    page.buttons[dstIndex].id = dstIndex;
+    page.buttons[dragSrcIndex] = tmp;
+    page.buttons[dragSrcIndex].id = dragSrcIndex;
+
+    STATE.activeProfile().activeButtonIndex = dstIndex;
+    dragSrcIndex = null;
+    persist();
+    renderAll();
+    toast(`Swapped #${srcIndex} ⇄ #${dstIndex}`);
+  });
+}
+bindCellDragSwap($("dial-grid"), "data-index");
+bindCellDragSwap($("kp-grid"), "data-kp-index");
+
+/* Copy / Move / Swap / Clear buttons */
+function startClipboardOp(mode) {
+  if (STATE.clipboardOp && STATE.clipboardOp.mode === mode) { cancelClipboardOp(); return; }
+  const page = STATE.activePage();
+  const idx = STATE.activeBtnIndex();
+  STATE.clipboardOp = {
+    mode,
+    pageId: page.id,
+    index: idx,
+    buttonData: JSON.parse(JSON.stringify(page.buttons[idx]))
+  };
+  $("kp-op-status").textContent = `${mode.toUpperCase()} active from #${idx} — click destination cell (even on another page). Esc or ${mode} again cancels.`;
+  renderKeypadPanel();
+}
+$("kp-btn-copy").addEventListener("click", () => startClipboardOp("copy"));
+$("kp-btn-move").addEventListener("click", () => startClipboardOp("move"));
+$("kp-btn-swap").addEventListener("click", () => startClipboardOp("swap"));
+$("kp-btn-clear").addEventListener("click", () => {
+  const idx = STATE.activeBtnIndex();
+  if (isEmptyButton(STATE.activePage().buttons[idx])) return;
+  snapshotForUndo("clear");
+  STATE.activePage().buttons[idx] = emptyButton(idx);
+  persist();
+  renderAll();
+  toast(`Cleared button #${idx}`);
+});
+
+/* Inline Keypad Metadata & Button edits */
+$("kp-prof-name").addEventListener("input", (e) => {
+  STATE.activeProfile().name = e.target.value;
+  persist();
+  renderProfiles();
+});
+$("kp-prof-id").addEventListener("input", (e) => {
+  STATE.activeProfile().lp5Id = e.target.value.trim();
+  persist();
+});
+$("kp-page-name").addEventListener("input", (e) => {
+  STATE.activePage().name = e.target.value;
+  persist();
+  renderPages();
+  renderKeypadPanel();
+});
+$("kp-btn-label").addEventListener("input", (e) => {
+  const b = STATE.getButton(STATE.activeBtnIndex());
+  b.label = e.target.value;
+  persist();
+  renderConsole();
+  renderKeypadPanel();
+});
+$("kp-btn-emoji").addEventListener("input", (e) => {
+  const b = STATE.getButton(STATE.activeBtnIndex());
+  b.emoji = e.target.value;
+  persist();
+  renderConsole();
+  renderKeypadPanel();
+});
+$("kp-open-full-modal").addEventListener("click", () => {
+  openEditor(STATE.activeBtnIndex());
+});
+$("kp-quick-home").addEventListener("click", () => {
+  const b = STATE.getButton(STATE.activeBtnIndex());
+  b.label = b.label || "Home";
+  b.emoji = b.emoji || "🏠";
+  b.steps = [{ type: "go_to_page", value: "1" }];
+  persist();
+  renderAll();
+  toast("Set to go_to_page: 1");
+});
+$("kp-add-step").addEventListener("click", () => {
+  const b = STATE.getButton(STATE.activeBtnIndex());
+  b.steps = b.steps || [];
+  b.steps.push({ type: "key", value: "" });
+  persist();
+  renderAll();
+});
+
+$("kp-steps-list").addEventListener("input", (e) => {
+  const row = e.target.closest(".step-row");
+  if (!row) return;
+  const idx = Number(row.dataset.kpStepIdx);
+  const b = STATE.getButton(STATE.activeBtnIndex());
+  if (!b.steps[idx]) return;
+  if (e.target.matches("[data-act='type']")) {
+    b.steps[idx].type = e.target.value;
+    if ((e.target.value === "wait" || e.target.value === "go_to_page") && !b.steps[idx].value) {
+      b.steps[idx].value = e.target.value === "wait" ? "500" : "1";
+    }
+    persist();
+    renderAll();
+  } else if (e.target.matches("[data-act='value']")) {
+    b.steps[idx].value = e.target.value;
+    persist();
+    renderConsole();
+    // Lightweight validation update without losing input focus
+    showValidation(validateProfileForYaml(STATE.activeProfile()), "✓ YAML contract valid.");
+  }
+});
+
+$("kp-steps-list").addEventListener("click", (e) => {
+  const btnEl = e.target.closest("[data-act]");
+  if (!btnEl) return;
+  const act = btnEl.dataset.act;
+  if (act === "type" || act === "value") return;
+  const row = btnEl.closest(".step-row");
+  if (!row) return;
+  const idx = Number(row.dataset.kpStepIdx);
+  const b = STATE.getButton(STATE.activeBtnIndex());
+  if (act === "up" && idx > 0) {
+    [b.steps[idx - 1], b.steps[idx]] = [b.steps[idx], b.steps[idx - 1]];
+  } else if (act === "down" && idx < b.steps.length - 1) {
+    [b.steps[idx + 1], b.steps[idx]] = [b.steps[idx], b.steps[idx + 1]];
+  } else if (act === "del") {
+    b.steps.splice(idx, 1);
+  }
+  persist();
+  renderAll();
+});
+
+/* Save YAML & Build .lp5 actions.
+   No network: the page never calls a local bridge. Chromium browsers can save
+   straight into lp5-build/ (pick it once per session); others download. */
+let yamlFileHandle = null;
+async function saveYamlFile(yamlText) {
+  if (window.showSaveFilePicker) {
+    try {
+      if (!yamlFileHandle) {
+        yamlFileHandle = await window.showSaveFilePicker({
+          suggestedName: "keypad-layout.yaml",
+          types: [{ description: "Keypad layout", accept: { "text/yaml": [".yaml", ".yml"] } }]
+        });
+      }
+      const w = await yamlFileHandle.createWritable();
+      await w.write(yamlText);
+      await w.close();
+      return { where: yamlFileHandle.name, picked: true };
+    } catch (e) {
+      if (e && e.name === "AbortError") return null;
+      yamlFileHandle = null; // permission lost or unsupported: fall back to download
+    }
+  }
+  download("keypad-layout.yaml", yamlText, "text/yaml");
+  return { where: "your Downloads folder", picked: false };
+}
+
+async function saveValidatedYaml() {
+  const ap = STATE.activeProfile();
+  const v = validateProfileForYaml(ap);
+  if (!v.valid) {
+    alert("Fix these before saving YAML:\n\n• " + v.errors.join("\n• "));
+    return null;
+  }
+  const res = await saveYamlFile(YAML.exportProfile(ap));
+  if (res) toast(`Saved keypad-layout.yaml to ${res.where}`);
+  return res ? { ...res, v, ap } : null;
+}
+
+$("kp-save-yaml").addEventListener("click", () => { saveValidatedYaml(); });
+
+$("kp-build-lp5").addEventListener("click", async () => {
+  const ap = STATE.activeProfile();
+  const v = validateProfileForYaml(ap);
+  if (!v.valid) {
+    alert("Validation failed — refusing to build .lp5:\n\n• " + v.errors.join("\n• "));
+    return;
+  }
+  const res = await saveValidatedYaml();
+  if (!res) return;
+  const outBox = $("kp-stdout-box");
+  outBox.hidden = false;
+  const configured = ap.pages.reduce((acc, p) => acc + p.buttons.filter(b => b.steps?.length).length, 0);
+  const cmd = res.picked
+    ? `cd /d "C:\\Templar Archives\\My Apps\\Logi.Cool.J\\lp5-build"\npython yaml2lp5.py\n(Saved elsewhere? python yaml2lp5.py "<full path to ${res.where}>")`
+    : `cd /d "C:\\Templar Archives\\My Apps\\Logi.Cool.J\\lp5-build"\npython yaml2lp5.py "%USERPROFILE%\\Downloads\\keypad-layout.yaml"`;
+  outBox.textContent =
+`📦 Saved keypad-layout.yaml to ${res.where} (${ap.pages.length} pages, ${configured} configured buttons).
+Run in a terminal (lp5-build folder, next to yaml2lp5.py + template.lp5):
+${cmd}
+Then import "${ap.name || "Keypad Layout"}.lp5" in Options+.${res.v.warnings.length ? "\n\n" + res.v.warnings.join("\n") : ""}`;
+});
+
+/* =========================================================
+   LIBRARY
+   ========================================================= */
+function renderLibrary() {
+  const chips = $("lib-chips");
+  const tags = new Set();
+  STATE.data.savedActions.forEach(a => (a.tags || []).forEach(t => tags.add(t)));
+  const f = STATE.data.filters;
+
+  chips.innerHTML =
+    `<button class="chip ${f.tag === "all" ? "active" : ""}" data-tag="all">All</button>` +
+    Array.from(tags).sort().map(t =>
+      `<button class="chip ${f.tag === t ? "active" : ""}" data-tag="${esc(t)}">${esc(t)}</button>`
+    ).join("");
+
+  const q = (f.search || "").toLowerCase();
+  const items = STATE.data.savedActions.filter(a => {
+    if (f.tag !== "all" && !(a.tags || []).includes(f.tag)) return false;
+    if (!q) return true;
+    return (a.label || "").toLowerCase().includes(q)
+      || (a.tags || []).some(t => t.toLowerCase().includes(q))
+      || (a.notes || "").toLowerCase().includes(q);
+  });
+
+  const list = $("lib-list");
+  if (!items.length) {
+    list.innerHTML = "";
+    $("lib-empty").hidden = false;
+    return;
+  }
+  $("lib-empty").hidden = true;
+  list.innerHTML = items.map(a => {
+    const icon = a.imageData
+      ? `<img class="thumb" src="${esc(a.imageData)}" alt="">`
+      : `<div class="emoji-badge">${esc(a.emoji || "•")}</div>`;
+    return `
+      <div class="lib-item" data-action-id="${esc(a.id)}">
+        ${icon}
+        <div class="lib-item-body">
+          <div class="lib-item-head">
+            <span class="label">${esc(a.label || "Untitled")}</span>
+            <span class="steps-count">${(a.steps || []).length} step${(a.steps || []).length === 1 ? "" : "s"}</span>
+            <button class="del" data-act="del" title="Delete">✕</button>
+          </div>
+          <div class="lib-tags">
+            ${(a.tags || []).map(t => `<span class="lib-tag">${esc(t)}</span>`).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderProfiles() {
+  const list = $("prof-list");
+  list.innerHTML = STATE.data.profiles.map(p => `
+    <div class="prof-item ${p.id === STATE.data.activeProfileId ? "active" : ""}" data-profile-id="${esc(p.id)}">
+      <span class="prof-name">${esc(p.name)}</span>
+      <span class="prof-meta">${p.pages.length}p</span>
+      <div class="prof-actions">
+        <button class="mini" data-act="dup" title="Duplicate">⎘</button>
+        <button class="mini" data-act="ren" title="Rename">✎</button>
+        <button class="mini danger" data-act="del" title="Delete">✕</button>
+      </div>
+    </div>
+  `).join("");
+  $("prof-count").textContent =
+    STATE.data.profiles.length + " profile" + (STATE.data.profiles.length === 1 ? "" : "s");
+}
+
+/* =========================================================
+   EDITOR MODAL
+   ========================================================= */
+let editorButtonIndex = null;
+
+function openEditor(index) {
+  editorButtonIndex = index;
+  STATE.activeProfile().activeButtonIndex = index;
+  persist();
+
+  const b = STATE.getButton(index);
+  $("ed-index").textContent = "#" + index;
+  $("ed-label").value = b.label || "";
+  $("ed-emoji").value = b.emoji || "";
+  $("ed-tags").value = (b.tags || []).join(", ");
+  $("ed-ahk").value = b.ahk || "";
+  $("ed-ps").value = b.ps || "";
+  $("ed-recipe").value = b.recipe || "";
+  $("ed-notes").value = b.notes || "";
+
+  updateImagePreview(b.imageData, b.emoji);
+  renderSteps();
+  renderConsole();
+  renderKeypadPanel();
+  $("editor-modal").hidden = false;
+}
+
+function updateImagePreview(imageData, emoji) {
+  const img = $("ed-img-preview");
+  const em = $("ed-emoji-preview");
+  const dl = $("ed-download");
+  const rm = $("ed-remove-img");
+
+  if (imageData) {
+    img.src = imageData;
+    img.hidden = false;
+    em.hidden = true;
+    dl.hidden = false;
+    rm.hidden = false;
+  } else {
+    img.hidden = true;
+    img.removeAttribute("src");
+    em.hidden = false;
+    em.textContent = emoji || "＋";
+    dl.hidden = true;
+    rm.hidden = true;
+  }
+}
+
+function closeEditor() {
+  $("editor-modal").hidden = true;
+  editorButtonIndex = null;
+  persist();
+  renderAll();
+}
+
+function updateEditorButton(patch) {
+  if (editorButtonIndex === null) return;
+  const page = STATE.activePage();
+  Object.assign(page.buttons[editorButtonIndex], patch);
+  persist();
+  renderConsole();
+  renderKeypadPanel();
+}
+
+function renderSteps() {
+  const b = STATE.getButton(editorButtonIndex);
+  const list = $("ed-steps");
+  if (!b.steps || !b.steps.length) {
+    list.innerHTML = '<div class="step-empty">No steps yet — click ＋ to add.</div>';
+    return;
+  }
+  list.innerHTML = b.steps.map((s, idx) => `
+    <div class="step-row" data-idx="${idx}">
+      <select data-act="type">${STEP_TYPES.map(st =>
+        `<option value="${st.type}" ${st.type === s.type ? "selected" : ""}>${st.label}</option>`
+      ).join("")}</select>
+      <input type="text" data-act="value" value="${esc(s.value)}" placeholder="${STEP_TYPES.find(x => x.type === s.type)?.placeholder || ""}">
+      <button class="mini" data-act="up" title="Up">↑</button>
+      <button class="mini" data-act="down" title="Down">↓</button>
+      <button class="mini danger" data-act="del" title="Delete">✕</button>
+    </div>
+  `).join("");
+}
+
+function addStep() {
+  const b = STATE.getButton(editorButtonIndex);
+  b.steps = b.steps || [];
+  b.steps.push({ type: "key", value: "" });
+  persist();
+  renderSteps();
+  renderConsole();
+  renderKeypadPanel();
+}
+
+function updateStep(idx, action, value) {
+  const b = STATE.getButton(editorButtonIndex);
+  if (!b.steps[idx]) return;
+  if (action === "type") {
+    b.steps[idx].type = value;
+    if ((value === "wait" || value === "go_to_page") && !b.steps[idx].value) {
+      b.steps[idx].value = value === "wait" ? "500" : "1";
+    }
+  } else if (action === "value") {
+    b.steps[idx].value = value;
+    persist();
+    renderConsole();
+    renderKeypadPanel();
+    return; // don't re-render the step list: it would steal focus mid-typing
+  } else if (action === "up" && idx > 0) {
+    [b.steps[idx - 1], b.steps[idx]] = [b.steps[idx], b.steps[idx - 1]];
+  } else if (action === "down" && idx < b.steps.length - 1) {
+    [b.steps[idx + 1], b.steps[idx]] = [b.steps[idx], b.steps[idx + 1]];
+  } else if (action === "del") {
+    b.steps.splice(idx, 1);
+  }
+  persist();
+  renderSteps();
+  renderConsole();
+  renderKeypadPanel();
+}
+
+/* editor field bindings */
+["ed-label", "ed-tags", "ed-ahk", "ed-ps", "ed-recipe", "ed-notes", "ed-emoji"].forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener("input", () => {
+    const field = id.replace("ed-", "");
+    if (field === "tags") {
+      updateEditorButton({ tags: el.value.split(",").map(s => s.trim()).filter(Boolean) });
+    } else {
+      updateEditorButton({ [field]: el.value });
+    }
+    if (field === "emoji") updateImagePreview(STATE.getButton(editorButtonIndex).imageData, el.value);
+  });
+});
+
+$("ed-steps").addEventListener("input", (e) => {
+  const row = e.target.closest(".step-row");
+  if (!row) return;
+  const idx = Number(row.dataset.idx);
+  if (e.target.matches("[data-act='type']")) updateStep(idx, "type", e.target.value);
+  else if (e.target.matches("[data-act='value']")) updateStep(idx, "value", e.target.value);
+});
+$("ed-steps").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-act]");
+  if (!btn) return;
+  const act = btn.dataset.act;
+  if (act === "type" || act === "value") return;
+  const row = btn.closest(".step-row");
+  if (!row) return;
+  updateStep(Number(row.dataset.idx), act, null);
+});
+$("ed-add-step").addEventListener("click", addStep);
+$("ed-close").addEventListener("click", closeEditor);
+$("editor-modal").addEventListener("click", (e) => {
+  if (e.target === $("editor-modal")) closeEditor();
+});
+
+/* tabs */
+document.querySelectorAll(".ed-tabs .tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".ed-tabs .tab").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    const pane = t.dataset.tab;
+    document.querySelectorAll(".ed-pane").forEach(p =>
+      p.classList.toggle("active", p.dataset.pane === pane)
+    );
+  });
+});
+
+/* image upload */
+$("ed-upload").addEventListener("click", () => $("ed-file").click());
+$("ed-file").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const dataUrl = await resizeImage(f, 128);
+    updateEditorButton({ imageData: dataUrl });
+    updateImagePreview(dataUrl, STATE.getButton(editorButtonIndex).emoji);
+    toast("Image added");
+  } catch (err) {
+    alert("Failed to load image: " + err.message);
+  }
+  e.target.value = "";
+});
+$("ed-download").addEventListener("click", () => {
+  const b = STATE.getButton(editorButtonIndex);
+  if (!b.imageData) return;
+  const safe = (b.label || "button").replace(/[^\w\-]+/g, "-").toLowerCase();
+  download(`image-${safe}-${editorButtonIndex}.png`, dataUrlToBlob(b.imageData));
+  toast("Image saved");
+});
+$("ed-remove-img").addEventListener("click", () => {
+  updateEditorButton({ imageData: null });
+  updateImagePreview(null, STATE.getButton(editorButtonIndex).emoji);
+});
+
+/* editor actions */
+$("ed-save-lib").addEventListener("click", () => {
+  const b = STATE.getButton(editorButtonIndex);
+  if (!b.label) { toast("Add a label first"); return; }
+  const action = {
+    id: "act-" + uid(),
+    emoji: b.emoji,
+    label: b.label,
+    imageData: b.imageData,
+    tags: [...(b.tags || [])],
+    steps: JSON.parse(JSON.stringify(b.steps || [])),
+    ahk: b.ahk, ps: b.ps, recipe: b.recipe, notes: b.notes,
+    savedAt: new Date().toISOString()
+  };
+  STATE.data.savedActions.push(action);
+  persist();
+  renderLibrary();
+  toast("Saved to library");
+});
+
+$("ed-copy-code").addEventListener("click", () => {
+  const b = STATE.getButton(editorButtonIndex);
+  const txt = STATE.data.runtime === "ahk" ? b.ahk : b.ps;
+  if (!txt) { toast("No " + STATE.data.runtime.toUpperCase() + " code"); return; }
+  navigator.clipboard.writeText(txt).then(() => toast("Copied"));
+});
+
+$("ed-clear").addEventListener("click", () => {
+  if (!confirm("Clear this button?")) return;
+  const page = STATE.activePage();
+  page.buttons[editorButtonIndex] = emptyButton(editorButtonIndex);
+  persist();
+  renderAll();
+  openEditor(editorButtonIndex);
+});
+
+$("ed-mark-tested").addEventListener("click", () => {
+  updateEditorButton({ testedAt: new Date().toISOString() });
+  toast("Marked tested");
+});
+
+/* dial button click (single click selects in Keypad studio; double click opens modal) */
+$("dial-grid").addEventListener("click", (e) => {
+  const dial = e.target.closest(".dial-btn");
+  if (!dial) return;
+  openEditor(Number(dial.dataset.index));
+});
+
+/* =========================================================
+   PAGE ACTIONS
+   ========================================================= */
+$("page-select").addEventListener("change", (e) => {
+  const ap = STATE.activeProfile();
+  ap.activePageId = e.target.value;
+  persist();
+  renderAll();
+});
+
+$("btn-ren-page").addEventListener("click", () => {
+  const page = STATE.activePage();
+  confirmModal(
+    "Rename Page",
+    `<input id="m-name" class="input" value="${esc(page.name)}" style="width:100%">`,
+    () => {
+      page.name = $("m-name").value.trim() || page.name;
+      persist();
+      renderAll();
+    },
+    "Rename"
+  );
+});
+
+$("btn-add-page").addEventListener("click", () => {
+  confirmModal(
+    "New Page",
+    '<input id="m-name" class="input" placeholder="Page name" style="width:100%">',
+    () => {
+      const name = $("m-name").value.trim() || "Untitled";
+      const ap = STATE.activeProfile();
+      const page = emptyPage(name);
+      // Pre-fill Home on button 8 for pages > 1 as a helpful default
+      if (ap.pages.length >= 1) {
+        page.buttons[8].label = "Home";
+        page.buttons[8].emoji = "🏠";
+        page.buttons[8].steps = [{ type: "go_to_page", value: "1" }];
+      }
+      ap.pages.push(page);
+      ap.activePageId = page.id;
+      ap.activeButtonIndex = 0;
+      persist();
+      renderAll();
+    },
+    "Create"
+  );
+});
+
+$("btn-del-page").addEventListener("click", () => {
+  const ap = STATE.activeProfile();
+  if (ap.pages.length <= 1) { toast("Must have at least one page"); return; }
+  if (!confirm("Delete this page?")) return;
+  // Page numbers shift after a delete: keep go_to_page targets pointing at the same pages.
+  const delNum = ap.pages.findIndex(p => p.id === ap.activePageId) + 1;
+  let orphaned = 0;
+  ap.pages.forEach(pg => pg.buttons.forEach(b => (b.steps || []).forEach(s => {
+    if (s.type !== "go_to_page") return;
+    const n = Number(s.value);
+    if (n === delNum) { s.value = ""; orphaned++; }
+    else if (n > delNum) s.value = String(n - 1);
+  })));
+  if (orphaned) setTimeout(() => toast(`⚠ ${orphaned} page button(s) pointed at the deleted page — set a new target`, 4000), 50);
+  ap.pages = ap.pages.filter(p => p.id !== ap.activePageId);
+  ap.activePageId = ap.pages[0].id;
+  ap.activeButtonIndex = 0;
+  persist();
+  renderAll();
+});
+
+/* =========================================================
+   LIBRARY EVENTS
+   ========================================================= */
+$("lib-search").addEventListener("input", (e) => {
+  STATE.data.filters.search = e.target.value;
+  persist();
+  renderLibrary();
+});
+$("lib-chips").addEventListener("click", (e) => {
+  const chip = e.target.closest(".chip");
+  if (!chip) return;
+  STATE.data.filters.tag = chip.dataset.tag;
+  persist();
+  renderLibrary();
+});
+$("lib-list").addEventListener("click", (e) => {
+  const del = e.target.closest("[data-act='del']");
+  if (del) {
+    e.stopPropagation();
+    const id = del.closest(".lib-item").dataset.actionId;
+    STATE.data.savedActions = STATE.data.savedActions.filter(a => a.id !== id);
+    persist();
+    renderLibrary();
+    return;
+  }
+  const item = e.target.closest(".lib-item");
+  if (!item) return;
+  const action = STATE.data.savedActions.find(a => a.id === item.dataset.actionId);
+  if (!action) return;
+  const idx = STATE.activeBtnIndex();
+  const b = STATE.getButton(idx);
+  if (!isEmptyButton(b) && !confirm(`Replace button #${idx} ("${b.label || "unnamed"}") with "${action.label}"?`)) return;
+  snapshotForUndo("library assign");
+  Object.assign(b, {
+    emoji: action.emoji,
+    label: action.label,
+    imageData: action.imageData,
+    tags: [...(action.tags || [])],
+    steps: JSON.parse(JSON.stringify(action.steps || [])),
+    ahk: action.ahk, ps: action.ps, recipe: action.recipe, notes: action.notes
+  });
+  persist();
+  renderAll();
+  toast(`Assigned "${action.label}" to button #${idx}`);
+});
+$("btn-lib-clear").addEventListener("click", () => {
+  if (!confirm("Clear entire library?")) return;
+  STATE.data.savedActions = [];
+  persist();
+  renderLibrary();
+});
+
+/* =========================================================
+   PROFILES
+   ========================================================= */
+function setActiveProfile(id) {
+  const p = STATE.data.profiles.find(x => x.id === id);
+  if (!p) return;
+  STATE.data.activeProfileId = id;
+  const ap = STATE.activeProfile();
+  if (!ap.activePageId || !ap.pages.find(x => x.id === ap.activePageId)) {
+    ap.activePageId = ap.pages[0].id;
+  }
+  ap.activeButtonIndex = 0;
+  persist();
+  renderAll();
+}
+
+function createProfile(name) {
+  const p = defaultProfile(name);
+  STATE.data.profiles.push(p);
+  STATE.data.activeProfileId = p.id;
+  persist();
+  renderAll();
+  toast("Profile created");
+}
+
+function duplicateProfile(id) {
+  const src = STATE.data.profiles.find(p => p.id === id);
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = "prof-" + uid();
+  copy.name = src.name + " (copy)";
+  copy.lp5Id = src.lp5Id ? src.lp5Id + "-copy" : ""; // distinct IDs so Options+ won't overwrite the original
+  STATE.data.profiles.push(copy);
+  STATE.data.activeProfileId = copy.id;
+  persist();
+  renderAll();
+  toast("Profile duplicated");
+}
+
+function renameProfile(id, name) {
+  const p = STATE.data.profiles.find(x => x.id === id);
+  if (!p) return;
+  p.name = name || p.name;
+  persist();
+  renderAll();
+}
+
+function deleteProfile(id) {
+  if (STATE.data.profiles.length <= 1) { toast("Cannot delete the last profile"); return; }
+  if (!confirm("Delete this profile?")) return;
+  STATE.data.profiles = STATE.data.profiles.filter(p => p.id !== id);
+  if (STATE.data.activeProfileId === id) {
+    STATE.data.activeProfileId = STATE.data.profiles[0].id;
+  }
+  persist();
+  renderAll();
+  toast("Profile deleted");
+}
+
+$("prof-list").addEventListener("click", (e) => {
+  const item = e.target.closest(".prof-item");
+  if (!item) return;
+  const id = item.dataset.profileId;
+  const btn = e.target.closest("[data-act]");
+  if (btn) {
+    e.stopPropagation();
+    if (btn.dataset.act === "dup") duplicateProfile(id);
+    else if (btn.dataset.act === "del") deleteProfile(id);
+    else if (btn.dataset.act === "ren") {
+      const p = STATE.data.profiles.find(x => x.id === id);
+      confirmModal(
+        "Rename Profile",
+        `<input id="m-name" class="input" style="width:100%" value="${esc(p.name)}">`,
+        () => renameProfile(id, $("m-name").value.trim() || p.name),
+        "Rename"
+      );
+    }
+    return;
+  }
+  setActiveProfile(id);
+});
+
+$("btn-prof-new").addEventListener("click", () => {
+  confirmModal(
+    "New Profile",
+    '<input id="m-name" class="input" placeholder="Profile name" style="width:100%">',
+    () => {
+      const name = $("m-name").value.trim() || "New Profile";
+      createProfile(name);
+    },
+    "Create"
+  );
+});
+
+/* =========================================================
+   RUNTIME TOGGLE
+   ========================================================= */
+document.querySelectorAll(".rt-btn").forEach(b => {
+  b.addEventListener("click", () => {
+    STATE.data.runtime = b.dataset.runtime;
+    persist();
+    renderTopbar();
+    toast("Target: " + b.dataset.runtime.toUpperCase());
+  });
+});
+
+/* =========================================================
+   LLM PROMPT & LOCAL OLLAMA CONNECTOR
+   ========================================================= */
+function buildLlmPromptText() {
+  const input = $("llm-input").value.trim();
+  const target = $("llm-target").value;
+  if (!input) return null;
+
+  if (target === "yaml") {
+    return `You are generating a YAML button definition for a Logitech MX Creative Console (.lp5 converter).
+Output ONLY valid YAML for a single button object with:
+- label: short string (<= 12 chars)
+- steps: list of single-key step objects. Allowed keys:
+  - key: "Ctrl+Shift+T" (mods: Ctrl, Shift, Alt, Win; keys: Return, Tab, Space, Escape, Backspace, Delete, F1-F24, letters, digits)
+  - text: "string to type" (never include secrets/API keys)
+  - wait: 500 (integer ms)
+  - url: "https://..."
+  - open: "C:\\\\path\\\\app.exe"
+  - run: "C:\\\\path\\\\script.bat"
+  - go_to_page: 1 (must be the only step if used)
+
+USER REQUEST:
+${input}`;
+  }
+
+  const targetLabel = target === "ahk" ? "AutoHotkey v2" : target === "ps" ? "PowerShell 5.1" : "AutoHotkey v2 AND PowerShell 5.1";
+  return `You are writing automation code for a Logitech MX Creative Console button.
+
+The user will describe an action. Produce a short, self-contained script.
+
+RULES
+- Target runtime: ${targetLabel}.
+- Prefer SendInput (AHK) or AppActivate + SendKeys (PowerShell) over SetForegroundWindow.
+- Include brief comments. No external dependencies unless unavoidable.
+- Keep it under ~25 lines.
+- Output ONLY a fenced code block. No prose before or after.
+
+USER'S ACTION:
+${input}`;
+}
+
+$("btn-llm-build").addEventListener("click", () => {
+  const prompt = buildLlmPromptText();
+  if (!prompt) { toast("Describe the action first"); return; }
+  $("llm-out").value = prompt;
+  toast("Prompt built");
+});
+
+$("btn-llm-ollama").addEventListener("click", async () => {
+  const prompt = buildLlmPromptText();
+  if (!prompt) { toast("Describe the action first"); return; }
+  $("llm-out").value = "⏳ Querying local Ollama (http://localhost:11434/api/generate)...";
+  try {
+    const res = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: ($("llm-model").value.trim() || "qwen2.5-coder:latest"), prompt, stream: false })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.status);
+    $("llm-out").value = data.response || JSON.stringify(data, null, 2);
+    toast("Received response from local Ollama");
+  } catch {
+    $("llm-out").value = prompt;
+    toast("Local Ollama not detected on :11434 — placed prompt in box to copy");
+  }
+});
+
+$("btn-llm-copy").addEventListener("click", () => {
+  const txt = $("llm-out").value;
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(() => toast("Copied to clipboard"));
+});
+
+/* =========================================================
+   YAML EXPORT / IMPORT (Matches HANDOUT-keypad-addon.md)
+   ========================================================= */
+const YAML = (() => {
+  function exportProfile(profile) {
+    const out = { profile_name: profile.name || "MX 10-Page Layout" };
+    if (profile.lp5Id) out.profile_id = profile.lp5Id; // omitted = converter seeds IDs from profile_name
+    out.profile_page_count = profile.pages.length;
+    profile.pages.forEach((page, idx) => {
+      const pageObj = {
+        name: page.name || ("Page " + (idx + 1)),
+        buttons: []
+      };
+      page.buttons.forEach((btn, i) => {
+        if (!btn.steps || !btn.steps.length) return;
+        if (btn.steps.length > 1 && btn.steps.some(s => s.type === "go_to_page")) return;
+        const steps = btn.steps.map(s => {
+          const v = (s.type === "wait" || s.type === "go_to_page") ? Number(s.value) : String(s.value);
+          return { [s.type]: v };
+        });
+        const bEntry = { id: i, label: btn.label || "" };
+        if (btn.label) {
+          bEntry.icon = btn.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+        }
+        bEntry.steps = steps;
+        pageObj.buttons.push(bEntry);
+      });
+      out["page_" + (idx + 1)] = pageObj;
+    });
+    // forceQuotes: the converter uses PyYAML (YAML 1.1), which would read plain yes/no/on/off as booleans.
+    return jsyaml.dump(out, { lineWidth: -1, noRefs: true, quotingType: '"', forceQuotes: true });
+  }
+
+  function importAsProfile(yamlText, nameHint) {
+    const doc = jsyaml.load(yamlText);
+    if (!doc || typeof doc !== "object") throw new Error("Not a valid YAML object");
+    const pageCount = Number(doc.profile_page_count) || 1;
+    const profile = {
+      id: "prof-" + uid(),
+      lp5Id: doc.profile_id ? String(doc.profile_id) : "",
+      name: nameHint || doc.profile_name || "Imported",
+      createdAt: new Date().toISOString(),
+      pages: [],
+      activePageId: null,
+      activeButtonIndex: 0,
+      panelVisibility: { keypad: true, console: true, library: true, profiles: true, llm: true }
+    };
+    for (let i = 1; i <= pageCount; i++) {
+      const pageSrc = doc["page_" + i] || { name: "Page " + i, buttons: [] };
+      const page = emptyPage(pageSrc.name || ("Page " + i));
+      (pageSrc.buttons || []).forEach(b => {
+        const id = Number(b.id);
+        if (!Number.isInteger(id) || id < 0 || id > 8) return;
+        const btn = page.buttons[id];
+        btn.label = b.label == null ? "" : String(b.label);
+        btn.steps = (b.steps || []).map(s => {
+          if (!s || typeof s !== "object") return null;
+          const keys = Object.keys(s);
+          if (keys.length !== 1) return null;
+          const type = keys[0];
+          if (!STEP_TYPES.some(st => st.type === type)) return null;
+          return { type, value: String(s[type]) };
+        }).filter(Boolean);
+      });
+      profile.pages.push(page);
+    }
+    if (!profile.pages.length) profile.pages.push(emptyPage("Home"));
+    profile.activePageId = profile.pages[0].id;
+    return profile;
+  }
+
+  return { exportProfile, importAsProfile };
+})();
+
+/* =========================================================
+   10-PAGE SAMPLE PRESET LOADER
+   ========================================================= */
+$("btn-load-sample").addEventListener("click", () => {
+  const sampleYaml = `profile_name: "MX 10-Page Layout"
+profile_id: "mx-main"
+profile_page_count: 10
+page_1:
+  name: "Home"
+  buttons:
+    - id: 0
+      label: "AI Hub"
+      steps:
+        - go_to_page: 2
+    - id: 1
+      label: "Dev & Git"
+      steps:
+        - go_to_page: 3
+    - id: 2
+      label: "Terminal"
+      steps:
+        - open: "wt.exe"
+    - id: 3
+      label: "Browser"
+      steps:
+        - go_to_page: 4
+    - id: 4
+      label: "Media"
+      steps:
+        - go_to_page: 5
+    - id: 5
+      label: "Window Snap"
+      steps:
+        - go_to_page: 6
+    - id: 6
+      label: "Archives"
+      steps:
+        - open: "C:\\\\Templar Archives"
+    - id: 7
+      label: "System"
+      steps:
+        - go_to_page: 7
+    - id: 8
+      label: "Quick Notes"
+      steps:
+        - go_to_page: 8
+page_2:
+  name: "AI Hub"
+  buttons:
+    - id: 0
+      label: "DeepSeek"
+      steps:
+        - url: "https://chat.deepseek.com"
+    - id: 1
+      label: "Claude"
+      steps:
+        - url: "https://claude.ai"
+    - id: 2
+      label: "ChatGPT"
+      steps:
+        - url: "https://chatgpt.com"
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
+page_3:
+  name: "Dev & Git"
+  buttons:
+    - id: 0
+      label: "Git Status"
+      steps:
+        - text: "git status"
+        - key: "Return"
+    - id: 1
+      label: "Git Pull"
+      steps:
+        - text: "git pull"
+        - key: "Return"
+    - id: 2
+      label: "Save All"
+      steps:
+        - key: "Ctrl+Shift+S"
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
+page_4:
+  name: "Browser"
+  buttons:
+    - id: 0
+      label: "Reopen Tab"
+      steps:
+        - key: "Ctrl+Shift+T"
+    - id: 1
+      label: "New Tab"
+      steps:
+        - key: "Ctrl+T"
+    - id: 2
+      label: "Close Tab"
+      steps:
+        - key: "Ctrl+W"
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
+page_5:
+  name: "Media"
+  buttons:
+    - id: 0
+      label: "Play/Pause"
+      steps:
+        - key: "MediaPlayPause"
+    - id: 1
+      label: "Mute"
+      steps:
+        - key: "VolumeMute"
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
+page_6:
+  name: "Window Snap"
+  buttons:
+    - id: 0
+      label: "Snap Left"
+      steps:
+        - key: "Win+Left"
+    - id: 1
+      label: "Snap Right"
+      steps:
+        - key: "Win+Right"
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
+page_7:
+  name: "System"
+  buttons:
+    - id: 0
+      label: "Task Mgr"
+      steps:
+        - key: "Ctrl+Shift+Escape"
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
+page_8:
+  name: "Notes"
+  buttons:
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
+page_9:
+  name: "Macros"
+  buttons:
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1
+page_10:
+  name: "Sandbox"
+  buttons:
+    - id: 8
+      label: "Home"
+      steps:
+        - go_to_page: 1`;
+
+  const prof = YAML.importAsProfile(sampleYaml, "MX 10-Page Preset");
+  prof.lp5Id = "mx-preset"; // never collides with your real layout's IDs
+  STATE.data.profiles.push(prof);
+  STATE.data.activeProfileId = prof.id;
+  persist();
+  renderAll();
+  toast("Loaded 10-Page MX Keypad Preset");
+});
+
+/* =========================================================
+   EXPORT / IMPORT BUTTONS
+   ========================================================= */
+$("btn-export-yaml").addEventListener("click", () => {
+  try {
+    const ap = STATE.activeProfile();
+    const v = validateProfileForYaml(ap);
+    if (!v.valid && !confirm("YAML has validation issues:\n• " + v.errors.join("\n• ") + "\n\nExport anyway?")) {
+      return;
+    }
+    const yaml = YAML.exportProfile(ap);
+    download("keypad-layout.yaml", yaml, "text/yaml");
+    toast("keypad-layout.yaml exported");
+  } catch (e) {
+    alert("Export failed: " + e.message);
+  }
+});
+
+$("btn-export-json").addEventListener("click", () => {
+  download("mx-console-backup.json", JSON.stringify(STATE.data, null, 2), "application/json");
+  toast("Backup exported");
+});
+
+$("btn-export-images").addEventListener("click", async () => {
+  let count = 0;
+  for (const prof of STATE.data.profiles) {
+    for (const page of prof.pages) {
+      for (const btn of page.buttons) {
+        if (btn.imageData) {
+          const safe = (btn.label || "button").replace(/[^\w\-]+/g, "-").toLowerCase();
+          download(`img-${prof.name.replace(/[^\w\-]+/g, "-").toLowerCase()}-${page.name.replace(/[^\w\-]+/g, "-").toLowerCase()}-${btn.id}-${safe}.png`,
+            dataUrlToBlob(btn.imageData));
+          count++;
+          await new Promise(r => setTimeout(r, 120));
+        }
+      }
+    }
+  }
+  for (const act of STATE.data.savedActions) {
+    if (act.imageData) {
+      const safe = (act.label || "action").replace(/[^\w\-]+/g, "-").toLowerCase();
+      download(`img-action-${act.id}-${safe}.png`, dataUrlToBlob(act.imageData));
+      count++;
+      await new Promise(r => setTimeout(r, 120));
+    }
+  }
+  toast(count ? `Downloaded ${count} images` : "No images to export");
+});
+
+$("btn-import").addEventListener("click", () => $("file-import").click());
+$("file-import").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const text = ev.target.result;
+    const ext = f.name.toLowerCase().split(".").pop();
+    try {
+      if (ext === "yaml" || ext === "yml") {
+        const profile = YAML.importAsProfile(text);
+        STATE.data.profiles.push(profile);
+        STATE.data.activeProfileId = profile.id;
+        persist();
+        renderAll();
+        toast("YAML imported as profile");
+      } else {
+        const obj = JSON.parse(text);
+        if (obj && obj.version === SCHEMA_VERSION && Array.isArray(obj.profiles)) {
+          if (!confirm("Replace ALL current profiles and library with this backup? (Export a JSON backup first if unsure.)")) return;
+          obj.profiles.forEach(p => { if (p.lp5Id === undefined) p.lp5Id = p.id === "mx-main" ? "mx-main" : ""; });
+          if (!obj.cardOrder) obj.cardOrder = STATE.data.cardOrder;
+          STATE.data = obj;
+          STATE.undo = null;
+          persist();
+          renderAll();
+          toast("Backup imported");
+        } else if (obj && Array.isArray(obj.pages)) {
+          const profile = legacyBuilderToProfile(obj, f.name.replace(/\.json$/i, ""));
+          STATE.data.profiles.push(profile);
+          STATE.data.activeProfileId = profile.id;
+          persist();
+          renderAll();
+          toast("Old builder export imported as a new profile");
+        } else {
+          throw new Error("Unsupported file: expected a v3 backup or an old builder export");
+        }
+      }
+    } catch (err) {
+      alert("Import failed: " + err.message);
+    }
+  };
+  reader.readAsText(f);
+  e.target.value = "";
+});
+
+/* =========================================================
+   INIT
+   ========================================================= */
+/* Keyboard: Enter/Space activates grid cells; Escape closes modals or cancels an armed op */
+["dial-grid", "kp-grid"].forEach(id => {
+  $(id).addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const cell = e.target.closest(".dial-btn, .kp-cell");
+    if (!cell) return;
+    e.preventDefault();
+    cell.click();
+    const again = document.querySelector(`#${id} [data-${id === "kp-grid" ? "kp-index" : "index"}="${cell.dataset.kpIndex ?? cell.dataset.index}"]`);
+    if (again && $("editor-modal").hidden) again.focus();
+  });
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("confirm-modal").hidden) { $("confirm-cancel").click(); return; }
+  if (!$("editor-modal").hidden) { closeEditor(); return; }
+  if (cancelClipboardOp()) toast("Cancelled");
+});
+$("llm-model").value = STATE.data.ollamaModel || "";
+$("llm-model").addEventListener("input", (e) => { STATE.data.ollamaModel = e.target.value.trim(); persist(); });
+
+initDraggableCards();
+renderAll();
+</script>
+</body>
+</html>
