@@ -135,5 +135,101 @@ class Migration(unittest.TestCase):
         self.assertEqual(v2["profile_page_count"], 10)
 
 
+class SlotProfilesAndInstaller(unittest.TestCase):
+    def test_slot_action_strings_match_sdk_action_string(self):
+        self.assertEqual(c.slot_action("k0"), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___k0")
+        self.assertEqual(c.slot_action("k8"), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___k8")
+        self.assertEqual(c.slot_action("p01k0"), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___p01k0")
+        self.assertEqual(c.slot_action("p10k8"), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___p10k8")
+        self.assertEqual(c.slot_action("t0"), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___t0")
+        self.assertEqual(c.slot_action("k0", actions_form=True), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.KeyK0")
+        self.assertEqual(c.slot_action("p01k0", actions_form=True), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotP01K0")
+        self.assertEqual(c.slot_action("p10k8", actions_form=True), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotP10K8")
+        self.assertEqual(c.slot_action("t8", actions_form=True), "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.TestT8")
+        with self.assertRaises(ValueError):
+            c.slot_action("k9")
+
+    def test_build_slots_writes_all_three_profiles_from_keys_yaml(self):
+        d = tempfile.mkdtemp(prefix="lcj-slots-")
+        try:
+            keys_path = os.path.join(ROOT, "v2", "keys.yaml")
+            with contextlib.redirect_stdout(io.StringIO()):
+                paths = c.build_slots(keys_path, d)
+            self.assertEqual([os.path.basename(p) for p in paths], ["slots.lp5", "slots-actions.lp5", "slots-10pages.lp5"])
+
+            def read_lp5(path):
+                with zipfile.ZipFile(path) as z:
+                    prof = json.loads(z.read("ProfileInfo.json").decode("utf-8-sig"))
+                    adv = json.loads(z.read("metadata/AdvancedInfo.json").decode("utf-8-sig"))
+                    prev = json.loads(z.read("metadata/ProfilePreview.json").decode("utf-8-sig"))
+                    return prof, adv, prev, z.namelist()
+
+            prof_s, adv_s, prev_s, names_s = read_lp5(paths[0])
+            ws_s = prof_s["layout"]["layoutModes"][0]["workspaces"][0]
+            self.assertEqual(len(ws_s["pressPages"]), 1)
+            self.assertEqual(
+                [x["pressAction"] for x in ws_s["pressPages"][0]["controls"]],
+                [f"$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___k{k}" for k in range(9)],
+            )
+            self.assertEqual(prof_s["macroCommands"], [])
+            self.assertEqual(prof_s["profileActions"], [])
+            self.assertEqual([n for n in names_s if n.startswith("ActionImages/")], [])
+            self.assertEqual(len(prev_s["buttonPages"]), 9)
+            self.assertIn("LogiCoolJ", prof_s["additionalNativePluginNames"])
+            self.assertIn("LogiCoolJ", adv_s["additionalPluginNames"])
+
+            prof_a, adv_a, _, names_a = read_lp5(paths[1])
+            ws_a = prof_a["layout"]["layoutModes"][0]["workspaces"][0]
+            self.assertEqual(len(ws_a["pressPages"]), 1)
+            self.assertEqual(
+                [x["pressAction"] for x in ws_a["pressPages"][0]["controls"]],
+                [f"$LogiCoolJ___Loupedeck.LogiCoolJPlugin.KeyK{k}" for k in range(9)],
+            )
+            self.assertEqual([n for n in names_a if n.startswith("ActionImages/")], [])
+            self.assertIn("LogiCoolJ", adv_a["additionalPluginNames"])
+
+            prof_10, adv_10, _, names_10 = read_lp5(paths[2])
+            ws_10 = prof_10["layout"]["layoutModes"][0]["workspaces"][0]
+            self.assertEqual(len(ws_10["pressPages"]), 10)
+            p1_ctrls = [x["pressAction"] for x in ws_10["pressPages"][0]["controls"]]
+            self.assertEqual(
+                p1_ctrls[:7],
+                [f"$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___p01k{k}" for k in range(7)],
+            )
+            # Page 1 keys 7 (Index -> page 10) and 8 (Home -> page 2) are native ChangeTouchPage jumps.
+            self.assertEqual(p1_ctrls[7], f"$@Generic___@ChangeTouchPage___System|{ws_10['name']}|{ws_10['pressPages'][9]['name']}")
+            self.assertEqual(p1_ctrls[8], f"$@Generic___@ChangeTouchPage___System|{ws_10['name']}|{ws_10['pressPages'][1]['name']}")
+            # Page 2 key 7 (AI Scripts -> page 1) and key 8 (Index -> page 10) are ChangeTouchPage; key 0 (Gateway) is p02k0.
+            p2_ctrls = [x["pressAction"] for x in ws_10["pressPages"][1]["controls"]]
+            self.assertEqual(p2_ctrls[0], "$LogiCoolJ___Loupedeck.LogiCoolJPlugin.SlotCommand___p02k0")
+            self.assertEqual(p2_ctrls[7], f"$@Generic___@ChangeTouchPage___System|{ws_10['name']}|{ws_10['pressPages'][0]['name']}")
+            self.assertEqual(p2_ctrls[8], f"$@Generic___@ChangeTouchPage___System|{ws_10['name']}|{ws_10['pressPages'][9]['name']}")
+            self.assertEqual(prof_10["macroCommands"], [])
+            self.assertEqual(prof_10["profileActions"], [])
+            self.assertEqual([n for n in names_10 if n.startswith("ActionImages/")], [])
+            self.assertIn("LogiCoolJ", adv_10["additionalPluginNames"])
+
+            # Distinct profile IDs and displayNames across the three slot profiles
+            self.assertEqual(len({prof_s["name"], prof_a["name"], prof_10["name"]}), 3)
+            self.assertEqual(len({prof_s["displayName"], prof_a["displayName"], prof_10["displayName"]}), 3)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_install_plugin_script_exists_and_has_expected_steps(self):
+        ps1 = os.path.join(ROOT, "v2", "Install-Plugin.ps1")
+        self.assertTrue(os.path.exists(ps1))
+        with open(ps1, encoding="utf-8") as f:
+            text = f.read()
+        for step in (
+            "dotnet tool restore",
+            "-p:LinkToPluginService=true",
+            "logiplugintool -- pack",
+            "logiplugintool -- verify",
+            "logiplugintool -- install",
+            "Start-Process -FilePath $PackagePath",
+        ):
+            self.assertIn(step, text)
+
+
 if __name__ == "__main__":
     unittest.main()

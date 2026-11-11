@@ -4,8 +4,10 @@ Reads v1 keypad-layout.yaml and v2 keys.yaml (the same contract plus a paths: bl
 ${name} variables, an optional color per key and an optional text_mode).
 
 Usage: python yaml2lp5.py [layout.yaml] [out.lp5] [template.lp5]
+       python yaml2lp5.py --slots [layout.yaml] [out_dir] [template.lp5]
        python yaml2lp5.py --check [layout.yaml]
 Defaults: keypad-layout.yaml, <profile_name>.lp5, template.lp5 (all next to this script).
+--slots writes slots.lp5, slots-actions.lp5 and slots-10pages.lp5 for the v2 LogiCoolJ plugin.
 IDs are derived from profile_id (or profile_name) + page/button, so rebuilding keeps the same IDs.
 Options+ assigns its own IDs on import, so a rebuilt file imports as a new profile.
 
@@ -28,6 +30,9 @@ T_PCMD = "Loupedeck.Service.ApplicationProfileCommand, LoupedeckService"
 T_WS = "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutWorkspace7, LoupedeckService"
 T_PAGE = "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutPage7, LoupedeckService"
 T_CTRL = "Loupedeck.Service.Devices.Loupedeck7Devices.ProfileLayoutControl7, LoupedeckService"
+PLUGIN_NAME = "LogiCoolJ"
+PLUGIN_NS = "Loupedeck.LogiCoolJPlugin"
+SLOT_MODES = ("slots", "slots-actions", "slots-10pages")
 
 MODS = {"ctrl": ("ControlOrCommand", "Ctrl"), "control": ("ControlOrCommand", "Ctrl"),
         "shift": ("Shift", "Shift"), "alt": ("AltOrOption", "Alt"),
@@ -273,6 +278,36 @@ def is_uri(t):
     return re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]+:(?!\\)", t) is not None
 
 
+def slot_action(slot_name, actions_form=False):
+    """Profile action string matching Loupedeck.ActionString(pluginName, actionName, parameter).ToString()."""
+    m = re.fullmatch(r"k([0-8])|p(\d\d)k([0-8])|t([0-8])", slot_name)
+    if not m:
+        raise ValueError(f"Invalid slot name: {slot_name}")
+    if not actions_form:
+        return f"${PLUGIN_NAME}___{PLUGIN_NS}.SlotCommand___{slot_name}"
+    if m.group(1) is not None:
+        cls = f"KeyK{m.group(1)}"
+    elif m.group(2) is not None:
+        cls = f"SlotP{int(m.group(2)):02d}K{m.group(3)}"
+    else:
+        cls = f"TestT{m.group(4)}"
+    return f"${PLUGIN_NAME}___{PLUGIN_NS}.{cls}"
+
+
+def _infer_mode(out_path, mode):
+    if mode:
+        return mode
+    if out_path:
+        base = os.path.basename(out_path).lower()
+        if base == "slots.lp5":
+            return "slots"
+        if base == "slots-actions.lp5":
+            return "slots-actions"
+        if base == "slots-10pages.lp5":
+            return "slots-10pages"
+    return "native"
+
+
 # DejaVu ships with most Linux installs; Windows has Segoe UI and Arial instead.
 FONT_CANDIDATES = ("DejaVuSans-Bold.ttf", "segoeuib.ttf", "arialbd.ttf", "seguisb.ttf")
 _font_cache = {}
@@ -316,27 +351,41 @@ def render_icon(label, color, size=192):
     return buf.getvalue()
 
 
-def main(yaml_path=None, out_path=None, template=None):
+def main(yaml_path=None, out_path=None, template=None, mode=None):
     here = os.path.dirname(os.path.abspath(__file__))
     j = lambda f: os.path.join(here, f)
-    yaml_path = yaml_path or j("keypad-layout.yaml")
+    mode = _infer_mode(out_path, mode)
+    if mode not in ("native", *SLOT_MODES):
+        raise ValueError(f"Unknown mode: {mode}")
+    v2_keys = os.path.join(os.path.dirname(here), "v2", "keys.yaml")
+    default_yaml = v2_keys if (mode in SLOT_MODES and os.path.exists(v2_keys)) else j("keypad-layout.yaml")
+    yaml_path = yaml_path or default_yaml
     template = template or j("template.lp5")
     seen_unknown.clear()
     with zipfile.ZipFile(template) as z:
         tpl = {n: z.read(n) for n in z.namelist()}
     prof = json.loads(tpl["ProfileInfo.json"].decode("utf-8-sig"))
     appinfo = json.loads(tpl["ApplicationInfo.json"].decode("utf-8-sig"))
+    advinfo = json.loads(tpl["metadata/AdvancedInfo.json"].decode("utf-8-sig"))
     with open(yaml_path, encoding="utf-8") as f:
         lay = yaml.safe_load(f)
     problems = check_layout(lay)
     if problems:
         raise SystemExit("Not built; fix these first:\n  " + "\n  ".join(problems))
     lay = expanded_layout(lay)
-    name = str(lay.get("profile_name") or "Keypad Layout")
-    _seed[0] = str(lay.get("profile_id") or name)
-    out_path = out_path or j(re.sub(r'[<>:"/\\|?*]', "_", name) + ".lp5")
+    base_name = str(lay.get("profile_name") or "Keypad Layout")
+    base_seed = str(lay.get("profile_id") or base_name)
+    _seed[0] = base_seed if mode == "native" else f"{base_seed}:{mode}"
+    if mode == "native":
+        name = base_name
+        default_file = re.sub(r'[<>:"/\\|?*]', "_", name) + ".lp5"
+    else:
+        suffix = {"slots": "Slots", "slots-actions": "Slots - Actions", "slots-10pages": "Slots - 10 Pages"}[mode]
+        name = f"{base_name} ({suffix})"
+        default_file = f"{mode}.lp5"
+    out_path = out_path or j(default_file)
 
-    n_pages = int(lay.get("profile_page_count", 10))
+    n_pages = 1 if mode in ("slots", "slots-actions") else int(lay.get("profile_page_count", 10))
     ws_id = gid("ws")
     page_ids = [gid("page", i) for i in range(n_pages)]
     goto = lambda n: f"$@Generic___@ChangeTouchPage___System|{ws_id}|{page_ids[int(n) - 1]}"
@@ -355,7 +404,14 @@ def main(yaml_path=None, out_path=None, template=None):
             action = None
             target1 = steps[0].get("run") or steps[0].get("open") if len(steps) == 1 else None
             target1 = None if target1 is None else str(target1)
-            if len(steps) == 1 and "go_to_page" in steps[0]:
+            if mode in ("slots", "slots-actions"):
+                action = slot_action(f"k{cid}", actions_form=(mode == "slots-actions"))
+            elif mode == "slots-10pages":
+                if len(steps) == 1 and "go_to_page" in steps[0]:
+                    action = goto(steps[0]["go_to_page"])
+                else:
+                    action = slot_action(f"p{pi + 1:02d}k{cid}", actions_form=False)
+            elif len(steps) == 1 and "go_to_page" in steps[0]:
                 action = goto(steps[0]["go_to_page"])
             elif target1 is not None and not is_ps1(target1) and (
                     "run" in steps[0] or (not split_exe(target1)[0].lower().endswith(".exe") and not is_uri(target1))):
@@ -402,7 +458,7 @@ def main(yaml_path=None, out_path=None, template=None):
                                "showAsSingleAction": len(acts) == 1, "actionEditorCommands": eds,
                                "isMultiState": False, "actions": acts})
                 action = f"$@Generic___@Macro___{mid}"
-            if action and "ChangeTouchPage" not in action:
+            if mode == "native" and action and "ChangeTouchPage" not in action:
                 images[f"ActionImages/{action}.png"] = render_icon(label, color)
             controls.append({"$type": T_CTRL, "controlId": cid, "pressAction": action, "rotateAction": None})
             if pi == 0:
@@ -411,14 +467,25 @@ def main(yaml_path=None, out_path=None, template=None):
         pages.append({"$type": T_PAGE, "name": page_ids[pi], "displayName": str(src.get("name") or f"Page {pi + 1}"),
                       "description": None, "controls": controls})
 
-    mode = prof["layout"]["layoutModes"][0]
-    mode["workspaces"] = [{"$type": T_WS, "name": ws_id, "displayName": "Workspace 1", "description": None,
-                           "pressPages": pages, "rotatePages": []}]
-    mode["homeWorkspaceName"] = ws_id
-    prof["layout"]["layoutModes"] = [mode]
+    mode_obj = prof["layout"]["layoutModes"][0]
+    mode_obj["workspaces"] = [{"$type": T_WS, "name": ws_id, "displayName": "Workspace 1", "description": None,
+                               "pressPages": pages, "rotatePages": []}]
+    mode_obj["homeWorkspaceName"] = ws_id
+    prof["layout"]["layoutModes"] = [mode_obj]
+
+    if mode in SLOT_MODES:
+        native_plugins = list(prof.get("additionalNativePluginNames") or [])
+        if PLUGIN_NAME not in native_plugins:
+            native_plugins.append(PLUGIN_NAME)
+        prof["additionalNativePluginNames"] = native_plugins
+        adv_plugins = list(advinfo.get("additionalPluginNames") or [])
+        if PLUGIN_NAME not in adv_plugins:
+            adv_plugins.append(PLUGIN_NAME)
+        advinfo["additionalPluginNames"] = adv_plugins
 
     pid = gid("profile")
-    prof.update({"name": pid, "displayName": name, "description": "Built from keypad-layout.yaml",
+    desc = "Built from keypad-layout.yaml" if mode == "native" else f"Logi Cool J {mode} profile from {os.path.basename(yaml_path)}"
+    prof.update({"name": pid, "displayName": name, "description": desc,
                  "lastModifiedTimeUtc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f0Z"),
                  "actionImages90": None, "actionImages60": None, "wheelImages": None, "actionColors": None,
                  "macroCommands": macros, "macroAdjustments": [], "profileCommands": [],
@@ -436,7 +503,7 @@ def main(yaml_path=None, out_path=None, template=None):
         o.writestr("ProfileInfo.json", dump(prof))
         for path, data in images.items():
             o.writestr(path, data)
-        o.writestr("metadata/AdvancedInfo.json", tpl["metadata/AdvancedInfo.json"])
+        o.writestr("metadata/AdvancedInfo.json", tpl["metadata/AdvancedInfo.json"] if mode == "native" else dump(advinfo))
         o.writestr("metadata/LoupedeckPackage.yaml", pkg.encode("utf-8"))
         o.writestr("metadata/ProfilePreview.json", dump({"buttonPages": preview, "encoderPages": []}))
 
@@ -444,6 +511,21 @@ def main(yaml_path=None, out_path=None, template=None):
           f"{len(pactions)} file/script actions, {len(images)} icons")
     if seen_unknown:
         print("Unverified key names (test these):", ", ".join(sorted(seen_unknown)))
+    return out_path
+
+
+def build_slots(yaml_path=None, out_dir=None, template=None):
+    """Build slots.lp5, slots-actions.lp5 and slots-10pages.lp5 in out_dir."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    v2_dir = os.path.join(os.path.dirname(here), "v2")
+    v2_keys = os.path.join(v2_dir, "keys.yaml")
+    yaml_path = yaml_path or (v2_keys if os.path.exists(v2_keys) else os.path.join(here, "keypad-layout.yaml"))
+    out_dir = out_dir or here
+    os.makedirs(out_dir, exist_ok=True)
+    return tuple(
+        main(yaml_path, os.path.join(out_dir, f"{m}.lp5"), template, mode=m)
+        for m in SLOT_MODES
+    )
 
 
 def check_only(yaml_path=None):
@@ -460,5 +542,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if args[:1] == ["--check"]:
         check_only(*args[1:2])
+    elif args[:1] == ["--slots"]:
+        build_slots(*args[1:4])
     else:
         main(*args[:3])
