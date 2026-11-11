@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Logi Cool J plugin for the Logi Actions SDK (Logi Plugin Service), .NET 8.
+
+    Build switches (dotnet build -p:Name=Value):
+      SlotForm=Parameters   (default) one SlotCommand action with a parameter per slot: k0..k8, p01k0..p10k8, t0..t8
+      SlotForm=Actions      one action class per slot (KeyK0 ..., SlotP01K0 ..., TestT0 ...); use if a profile
+                            cannot assign parameterised actions. Only the device can tell which form works better.
+      LinkToPluginService=true
+                            also write the developer .link file into the Logi Plugin Service Plugins folder and ask
+                            the service to reload: this INSTALLS the plugin. Off by default; only Install-Plugin.ps1
+                            may turn it on.
+      KeysPath=<file>       keys.yaml the plugin watches (written to keys-path.txt beside the DLL).
+  -->
+  <PropertyGroup>
+    <Nullable>disable</Nullable>
+    <RootNamespace>Loupedeck.LogiCoolJPlugin</RootNamespace>
+    <AssemblyName>LogiCoolJPlugin</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <BaseOutputPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\bin\'))</BaseOutputPath>
+    <OutputPath>$(BaseOutputPath)$(Configuration)\bin\</OutputPath>
+    <PluginShortName>LogiCoolJ</PluginShortName>
+    <PluginDir>$(LocalAppData)\Logi\LogiPluginService\Plugins\</PluginDir>
+    <SlotForm Condition="'$(SlotForm)' == ''">Parameters</SlotForm>
+    <DefineConstants Condition="'$(SlotForm)' == 'Actions'">$(DefineConstants);SLOT_ACTIONS</DefineConstants>
+    <LinkToPluginService Condition="'$(LinkToPluginService)' == ''">false</LinkToPluginService>
+    <KeysPath Condition="'$(KeysPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\keys.yaml'))</KeysPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LogiCoolJ.Core\LogiCoolJ.Core.csproj" />
+    <!-- Compile against PluginApi 6.1.4 (net8). Not copied: the Logi Plugin Service supplies PluginApi at runtime. -->
+    <Reference Include="PluginApi">
+      <HintPath>$(PluginApiDir)PluginApi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CheckPluginApi" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(PluginApiDir)PluginApi.dll')"
+           Text="PluginApi.dll not found at $(PluginApiDir). In the v2 folder run: dotnet tool restore" />
+  </Target>
+
+  <Target Name="CopyPackage" AfterTargets="Build">
+    <ItemGroup>
+      <PackageFiles Include="package\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PackageFiles)" DestinationFolder="$(OutputPath)..\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <WriteLinesToFile File="$(OutputPath)keys-path.txt" Lines="$(KeysPath)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <Message Text="Logi Cool J: $(SlotForm) slots; package in $(BaseOutputPath)$(Configuration)\ ; watches $(KeysPath)" Importance="High" />
+  </Target>
+
+  <!-- Installs the plugin for development. Never runs unless LinkToPluginService=true. -->
+  <Target Name="LinkPlugin" AfterTargets="CopyPackage" Condition="'$(LinkToPluginService)' == 'true'">
+    <WriteLinesToFile File="$(PluginDir)$(MSBuildProjectName).link" Lines="$(BaseOutputPath)$(Configuration)\" Overwrite="true" />
+    <Message Text="Created plugin link at $(PluginDir)$(MSBuildProjectName).link" Importance="High" />
+    <Exec Command="start loupedeck:plugin/$(PluginShortName)/reload" ContinueOnError="true" />
+  </Target>
+
+  <Target Name="UnlinkPlugin" AfterTargets="CoreClean" Condition="'$(LinkToPluginService)' == 'true'">
+    <Delete Files="$(PluginDir)$(MSBuildProjectName).link" />
+  </Target>
+
+</Project>

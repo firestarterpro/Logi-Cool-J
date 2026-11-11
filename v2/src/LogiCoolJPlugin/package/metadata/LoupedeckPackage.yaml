@@ -1,0 +1,26 @@
+# Logi Cool J plugin package (Logi Actions SDK, plugin4).
+type: plugin4
+name: LogiCoolJ
+displayName: Logi Cool J
+description: Nine keypad slots whose labels and steps come from keys.yaml and update a moment after you save it.
+pluginFileName: LogiCoolJPlugin.dll
+version: 2.0
+author: kcorn
+copyright: Copyright © 2026 kcorn. All rights reserved.
+
+# Windows only (the step runner starts Windows programs).
+pluginFolderWin: bin
+
+# Same values the installed Claude Desktop plugin uses for the MX Creative Console keypad.
+supportedDevices:
+    - MxCreativeKeypad
+    - LoupedeckCtFamily
+
+pluginCapabilities:
+    - HasNoApplication
+
+# Logi Plugin Service 6.0 or later (the installed service is 6.4.2).
+minimumLoupedeckVersion: 6.0
+
+license: MIT
+licenseUrl: https://opensource.org/licenses/MIT
