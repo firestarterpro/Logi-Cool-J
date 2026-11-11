@@ -1,0 +1,109 @@
+# ============================================================================
+# device-test.yaml: one page, nine keys, one per step type, built to settle the
+# things that cannot be checked without the console: the arrow, backtick and media
+# key names, typed vs pasted text, and each step kind.
+#
+# Two ways to use it (same file, same keys):
+#   1. Native:  import v2\device-test.lp5 (made by lp5-build\yaml2lp5.py) in Options+.
+#               This tests Options+'s own key names (Backquote, ArrowLeft, MediaPlayPause).
+#   2. Plugin:  put the plugin's t0..t8 slots on a page; they read this file live.
+#               This tests the plugin's names (Oem3, ArrowLeft, MediaPlayPause).
+# Run both: a key that works in one and not the other tells you which name to fix.
+#
+# How to read the results: press key 0 first (Notepad opens, cursor in the text),
+# then keys 1..5 and read the Notepad text against "Expect". Keys 6..8 are visible by themselves.
+# Nothing here is destructive, uses secrets or touches anything outside this folder.
+# ============================================================================
+
+profile_name: "Logi Cool J Device Test"
+profile_page_count: 1
+text_mode: "type"
+
+paths:
+  logi_cool_j: "C:\\Templar Archives\\My Apps\\Logi.Cool.J"
+
+page_1:
+  name: "Device Test"
+  buttons:
+    # step: open (program). Expect: an empty Notepad window. Press this first.
+    - id: 0
+      label: "0 Notepad"
+      icon: "doc"
+      color: "#1F4E8C"
+      steps:
+        - open: "notepad.exe"
+    # step: key (arrows) + text. Typed: ab, Left, L, Right, R, Enter, cd, Up, U, Down, D.
+    # Expect, on two lines:   aLUbR   and   cdD
+    # (Left put L between a and b; Right put R at the end; Up from column 2 put U after "aL";
+    #  Down put D at the end of line 2.) A missing letter names the arrow that did nothing.
+    - id: 1
+      label: "1 Arrows"
+      icon: "left"
+      color: "#3C3C8C"
+      steps:
+        - text: "ab"
+        - key: "Left"
+        - text: "L"
+        - key: "Right"
+        - text: "R"
+        - key: "Return"
+        - text: "cd"
+        - key: "Up"
+        - text: "U"
+        - key: "Down"
+        - text: "D"
+    # step: key (backtick). Expect: one ` typed in Notepad. Native name Backquote, plugin name Oem3.
+    - id: 2
+      label: "2 Backtick"
+      icon: "terminal"
+      color: "#1E5E3A"
+      steps:
+        - key: "`"
+    # step: key (media). Expect: a player (if any) toggles play/pause and toggles back
+    # 1 s later; with no player nothing visible happens (and nothing breaks).
+    - id: 3
+      label: "3 Media"
+      icon: "play"
+      color: "#7A4A12"
+      steps:
+        - key: "MediaPlayPause"
+        - wait: 1000
+        - key: "MediaPlayPause"
+    # step: text + wait. Expect: "Hello" then half a second later " world" (typed).
+    - id: 4
+      label: "4 Text+Wait"
+      icon: "plus"
+      color: "#6B1F4E"
+      steps:
+        - text: "Hello"
+        - wait: 500
+        - text: " world"
+    # step: text with text_mode paste. Expect: " [pasted]" at once (clipboard, not typed).
+    - id: 5
+      label: "5 Paste"
+      icon: "paste"
+      color: "#4A5A1E"
+      text_mode: "paste"
+      steps:
+        - text: " [pasted]"
+    # step: url. Expect: example.com opens in the default browser.
+    - id: 6
+      label: "6 URL"
+      icon: "globe"
+      color: "#2A5A6A"
+      steps:
+        - url: "https://example.com"
+    # step: run (file through ShellExecute, paths variable). Expect: README.md opens in its default app.
+    - id: 7
+      label: "7 Run file"
+      icon: "folder"
+      color: "#5A2A2A"
+      steps:
+        - run: "${logi_cool_j}\\README.md"
+    # step: go_to_page (the only page, so it goes to itself). Expect: no visible change and no error.
+    - id: 8
+      label: "8 GoTo 1"
+      icon: "home"
+      color: "#444444"
+      steps:
+        - go_to_page: 1
