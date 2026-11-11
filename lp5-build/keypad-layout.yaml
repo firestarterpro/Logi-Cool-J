@@ -1,73 +1,141 @@
 # ============================================================================
 # MX Creative Console — 10-page keypad layout
-# Generated 2026-10-28 for kcorn, Windows 11
-# Format: Loupedeck keypad YAML (consumed by build-json.ps1 → keypad-layout.json)
+# Refreshed 2026-11-11 for kcorn, Windows 11 (v1 copy: keypad-layout.v1-backup.yaml)
+# Format: keypad YAML, contract in HANDOUT-keypad-addon.md.
+# Build:  python yaml2lp5.py  →  "MX 10-Page Layout.lp5"  →  import in Options+
 # Numbering: button 0 = top-left, 8 = bottom-right (row-major, 3x3 grid)
 # Rules:
-#   - Every step is one action: key | text | open | url | run | wait
-#   - No passwords / API keys anywhere
-#   - Anything marked ✏️ stops before Enter/Tab (you finish manually)
-#   - # EDIT comments = the path could not be verified on disk
+#   - Every step is one action: key | text | wait | url | open | run | go_to_page
+#   - go_to_page must be the button's only step
+#   - No passwords / API keys anywhere (the .lp5 is a plain zip)
+#   - Text steps stop before Enter/Tab (you finish manually)
+#   - CHECK comments = path or name that only the device can confirm
+# Pages: 1 AI Scripts · 2 Home · 3 DeepSeek · 4 Cursor · 5 Terminal ·
+#        6 Research · 7 Capture · 8 Files · 9 Windows · 10 Index
+# Every page has Home on 8 (Home's own 8 goes to Index).
 # ============================================================================
 
 profile_name: "MX 10-Page Layout"
 profile_page_count: 10
 
 # ---------------------------------------------------------------------------
-# Page 1 — Home (hub)
+# Page 1 — AI Scripts (stacks-attacks\tools\ai-scripts, see its README.md)
+# Open DL / Open Clip / Copy / Recycle run AiScript.ps1 directly through pwsh,
+# so they need no PowerToys row. Run uses Cursor's own shortcut (needs the
+# Cursor task + keybinding from cursor-tasks.json / cursor-keybindings.json).
+# CHECK: AiScript.ps1 is on GitHub main (adc26cf); run stacks-attacks-pull.bat
+#        once so it exists at the path below.
+# Fallback if a pwsh key does nothing on the device: change it to the
+# PowerToys shortcut from the ai-scripts README (D / V / C / X with
+# Ctrl+Alt+Shift).
 # ---------------------------------------------------------------------------
 page_1:
+  name: "AI Scripts"
+  buttons:
+    - id: 0
+      label: "Open DL"
+      icon: "download"
+      steps:
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action OpenDownload"
+    - id: 1
+      label: "Open Clip"
+      icon: "clipboard"
+      steps:
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action OpenClipboard"
+    - id: 2
+      label: "Run Script"
+      icon: "play"
+      steps:
+        # Open the script in Cursor first; Cursor must be the active window.
+        - key: "Ctrl+Alt+Shift+R"
+    - id: 3
+      label: "Copy Result"
+      icon: "copy"
+      steps:
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action Copy"
+    - id: 4
+      label: "Recycle Run"
+      icon: "recycle"
+      steps:
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action Recycle"
+    - id: 5
+      label: "Ask Cursor"
+      icon: "robot"
+      steps:
+        - key: "Ctrl+L"
+    - id: 6
+      label: "To Cursor"
+      icon: "cursor"
+      steps:
+        # Brings Cursor to the front (or starts it) so Run Script lands there.
+        - open: "C:\\Users\\kcorn\\AppData\\Local\\Programs\\Cursor\\Cursor.exe"
+    - id: 7
+      label: "Index"
+      icon: "list"
+      steps:
+        - go_to_page: 10
+    - id: 8
+      label: "Home"
+      icon: "home"
+      steps:
+        - go_to_page: 2
+
+# ---------------------------------------------------------------------------
+# Page 2 — Home (hub)
+# The Gateway and AI Control Center open their .exe directly: Options+ will not
+# launch them from a saved shortcut.
+# ---------------------------------------------------------------------------
+page_2:
   name: "Home"
   buttons:
     - id: 0
+      label: "Gateway"
+      icon: "gateway"
+      steps:
+        - open: "C:\\Templar Archives\\Templar Nexus\\dist\\TheGateway\\TheGateway.exe"
+    - id: 1
+      label: "Claude"
+      icon: "spark"
+      steps:
+        # Claude desktop is a Store app; explorer starts it by its app ID.
+        - open: "explorer.exe shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude"
+    - id: 2
+      label: "AI Control"
+      icon: "brain"
+      steps:
+        - open: "C:\\Templar Archives\\ai-control-center\\app\\dist\\AI Control Center.exe"
+    - id: 3
+      label: "Ref Drafts"
+      icon: "whistle"
+      steps:
+        # Same command as the desktop shortcut. Switch to the portable build's
+        # .exe once Ref Drafts ships one (npm run package).
+        - open: "C:\\Templar Archives\\Basketball Bro\\Ref Text Confirm\\pc-only-ref-drafts\\node_modules\\electron\\dist\\electron.exe \"C:\\Templar Archives\\Basketball Bro\\Ref Text Confirm\\pc-only-ref-drafts\""
+    - id: 4
       label: "DeepSeek"
       icon: "deepseek"
       steps:
         - url: "https://chat.deepseek.com"
         - wait: 1500
-    - id: 1
+    - id: 5
       label: "CursorCline"
       icon: "cursor"
       steps:
-        # run+key fallback (portable): launch Cursor, wait, open Cline
+        # launch Cursor, wait, open Cline
         - open: "C:\\Users\\kcorn\\AppData\\Local\\Programs\\Cursor\\Cursor.exe"
         - wait: 4000
         - key: "Ctrl+Alt+L"
-    - id: 2
-      label: "Terminal"
-      icon: "terminal"
-      steps:
-        - open: "wt.exe"
-    - id: 3
-      label: "Perplexity"
-      icon: "globe"
-      steps:
-        - url: "https://perplexity.ai"
-        - wait: 1500
-    - id: 4
-      label: "Browser"
-      icon: "browser"
-      steps:
-        - open: "msedge.exe"
-    - id: 5
-      label: "Files"
-      icon: "folder"
-      steps:
-        - key: "Win+E"
-        - wait: 800
-        # EDIT: change this subfolder if you want a specific project
-        - text: "C:\\Templar Archives"
-        - key: "Return"
     - id: 6
-      label: "Capture"
-      icon: "camera"
+      label: "PlayPause"
+      icon: "play"
       steps:
-        - go_to_page: 6
+        # From the folded Media page. CHECK: media key name
+        - key: "MediaPlayPause"
     - id: 7
-      label: "Windows"
-      icon: "window"
+      label: "AI Scripts"
+      icon: "1"
       steps:
-        - go_to_page: 8
+        - go_to_page: 1
     - id: 8
       label: "Index"
       icon: "list"
@@ -75,10 +143,10 @@ page_1:
         - go_to_page: 10
 
 # ---------------------------------------------------------------------------
-# Page 2 — DeepSeek
-# All ✏️ items stop BEFORE Enter/Tab. You press Enter/Tab when ready.
+# Page 3 — DeepSeek
+# All slash-command items stop BEFORE Enter/Tab. You press Enter/Tab when ready.
 # ---------------------------------------------------------------------------
-page_2:
+page_3:
   name: "DeepSeek"
   buttons:
     - id: 0
@@ -126,12 +194,12 @@ page_2:
       label: "Home"
       icon: "home"
       steps:
-        - go_to_page: 1
+        - go_to_page: 2
 
 # ---------------------------------------------------------------------------
-# Page 3 — Cursor + Cline (VS Code default shortcuts)
+# Page 4 — Cursor + Cline (VS Code default shortcuts)
 # ---------------------------------------------------------------------------
-page_3:
+page_4:
   name: "Cursor+Cline"
   buttons:
     - id: 0
@@ -158,6 +226,7 @@ page_3:
       label: "Terminal"
       icon: "terminal"
       steps:
+        # CHECK: backtick key name
         - key: "Ctrl+`"
     - id: 5
       label: "Problems"
@@ -179,12 +248,12 @@ page_3:
       label: "Home"
       icon: "home"
       steps:
-        - go_to_page: 1
+        - go_to_page: 2
 
 # ---------------------------------------------------------------------------
-# Page 4 — Terminal & agents
+# Page 5 — Terminal & agents
 # ---------------------------------------------------------------------------
-page_4:
+page_5:
   name: "Terminal"
   buttons:
     - id: 0
@@ -196,7 +265,7 @@ page_4:
       label: "TermProj"
       icon: "terminal"
       steps:
-        # EDIT: replace with your project path
+        # Windows Terminal in the archive root; change -d for a project
         - open: "wt.exe -d \"C:\\Templar Archives\""
     - id: 2
       label: "agy"
@@ -232,12 +301,12 @@ page_4:
       label: "Home"
       icon: "home"
       steps:
-        - go_to_page: 1
+        - go_to_page: 2
 
 # ---------------------------------------------------------------------------
-# Page 5 — Research
+# Page 6 — Research
 # ---------------------------------------------------------------------------
-page_5:
+page_6:
   name: "Research"
   buttons:
     - id: 0
@@ -292,12 +361,12 @@ page_5:
       label: "Home"
       icon: "home"
       steps:
-        - go_to_page: 1
+        - go_to_page: 2
 
 # ---------------------------------------------------------------------------
-# Page 6 — Capture & clipboard
+# Page 7 — Capture & clipboard
 # ---------------------------------------------------------------------------
-page_6:
+page_7:
   name: "Capture"
   buttons:
     - id: 0
@@ -319,7 +388,7 @@ page_6:
       label: "Clip→txt"
       icon: "doc"
       steps:
-        # Paste clipboard into new Notepad and save (your old Page 2 button 0)
+        # Paste clipboard into new Notepad and save
         - open: "notepad.exe"
         - wait: 1200
         - key: "Ctrl+V"
@@ -334,7 +403,7 @@ page_6:
       label: "RenderOut"
       icon: "folder"
       steps:
-        # EDIT: point at the output folder you configured
+        # html-render output folder (exists); change if you moved the output
         - open: "C:\\Users\\kcorn\\OneDrive\\Documents"
     - id: 6
       label: "SwitchPaste"
@@ -354,14 +423,12 @@ page_6:
       label: "Home"
       icon: "home"
       steps:
-        - go_to_page: 1
+        - go_to_page: 2
 
 # ---------------------------------------------------------------------------
-# Page 7 — Files & projects
-# Confirmed: C:\Templar Archives, C:\llm-explorer, logi scripts
-# Unconfirmed (EDIT): ai-control-center subfolder, Basketball Bro, My Apps\html-render
+# Page 8 — Files & projects (every path below checked on disk 2026-11-11)
 # ---------------------------------------------------------------------------
-page_7:
+page_8:
   name: "Files"
   buttons:
     - id: 0
@@ -375,16 +442,15 @@ page_7:
       steps:
         - open: "C:\\Templar Archives"
     - id: 2
-      label: "AIControl"
-      icon: "brain"
+      label: "SyncConsole"
+      icon: "sync"
       steps:
-        # EDIT: confirmed folder exists under Templar Archives — set full path
-        - open: "C:\\Templar Archives\\ai-control-center"
+        # Beer League sync console (moved here from Index)
+        - run: "C:\\Templar Archives\\Basketball Bro\\beer-league\\sync\\Start Sync Console.bat"
     - id: 3
       label: "BeerLeague"
       icon: "basketball"
       steps:
-        # EDIT: confirmed folder exists under Templar Archives — set full path
         - open: "C:\\Templar Archives\\Basketball Bro\\beer-league"
     - id: 4
       label: "LLMExplorer"
@@ -395,34 +461,36 @@ page_7:
       label: "HTMLRender"
       icon: "image"
       steps:
-        # EDIT: confirmed folder exists under Templar Archives — set full path
         - open: "C:\\Templar Archives\\My Apps\\html-render"
     - id: 6
-      label: "logi"
+      label: "LogiCoolJ"
       icon: "keyboard"
       steps:
-        - open: "C:\\Users\\kcorn\\OneDrive\\Documents\\logi scripts"
+        # this project (replaces the old "logi scripts" folder)
+        - open: "C:\\Templar Archives\\My Apps\\Logi.Cool.J"
     - id: 7
-      label: "NewExplorer"
-      icon: "folder"
+      label: "Options+"
+      icon: "gear"
       steps:
-        - key: "Win+E"
+        # moved here from Index
+        - open: "C:\\Program Files\\LogiOptionsPlus\\logioptionsplus.exe"
     - id: 8
       label: "Home"
       icon: "home"
       steps:
-        - go_to_page: 1
+        - go_to_page: 2
 
 # ---------------------------------------------------------------------------
-# Page 8 — Windows & displays
+# Page 9 — Windows & displays
 # ---------------------------------------------------------------------------
-page_8:
+page_9:
   name: "Windows"
   buttons:
     - id: 0
       label: "SnapLeft"
       icon: "left"
       steps:
+        # CHECK: arrow key names (all of this page)
         - key: "Win+Left"
     - id: 1
       label: "Maximize"
@@ -463,123 +531,70 @@ page_8:
       label: "Home"
       icon: "home"
       steps:
-        - go_to_page: 1
+        - go_to_page: 2
 
 # ---------------------------------------------------------------------------
-# Page 9 — Media
-# 5-7 left empty on purpose; volume dial mode lives here (see dials section)
-# ---------------------------------------------------------------------------
-page_9:
-  name: "Media"
-  buttons:
-    - id: 0
-      label: "PlayPause"
-      icon: "play"
-      steps:
-        - key: "MediaPlayPause"
-    - id: 1
-      label: "Prev"
-      icon: "prev"
-      steps:
-        - key: "MediaPreviousTrack"
-    - id: 2
-      label: "Next"
-      icon: "next"
-      steps:
-        - key: "MediaNextTrack"
-    - id: 3
-      label: "Mute"
-      icon: "mute"
-      steps:
-        - key: "VolumeMute"
-    - id: 4
-      label: "Spotify"
-      icon: "spotify"
-      steps:
-        - open: "spotify:"
-    - id: 5
-      label: ""
-      icon: ""
-      steps: []
-    - id: 6
-      label: ""
-      icon: ""
-      steps: []
-    - id: 7
-      label: ""
-      icon: ""
-      steps: []
-    - id: 8
-      label: "Home"
-      icon: "home"
-      steps:
-        - go_to_page: 1
-
-# ---------------------------------------------------------------------------
-# Page 10 — Index & workshop
-# Beer League Sync Console added here (button 8 was Home; moved Home is still 8 —
-# so we replace 'Open blank YAML template' at 7 with Sync, and keep 8=Home).
+# Page 10 — Index (a jump to every page, plus Mute from the folded Media page)
 # ---------------------------------------------------------------------------
 page_10:
   name: "Index"
   buttons:
     - id: 0
       label: "→ DeepSeek"
-      icon: "2"
-      steps:
-        - go_to_page: 2
-    - id: 1
-      label: "→ Cursor"
       icon: "3"
       steps:
         - go_to_page: 3
-    - id: 2
-      label: "→ Terminal"
+    - id: 1
+      label: "→ Cursor"
       icon: "4"
       steps:
         - go_to_page: 4
-    - id: 3
-      label: "→ Research"
+    - id: 2
+      label: "→ Terminal"
       icon: "5"
       steps:
         - go_to_page: 5
-    - id: 4
-      label: "→ Capture"
+    - id: 3
+      label: "→ Research"
       icon: "6"
       steps:
         - go_to_page: 6
+    - id: 4
+      label: "→ Capture"
+      icon: "7"
+      steps:
+        - go_to_page: 7
     - id: 5
-      label: "Options+"
-      icon: "gear"
+      label: "→ Files"
+      icon: "8"
       steps:
-        - open: "C:\\Program Files\\LogiOptionsPlus\\logioptionsplus.exe"
+        - go_to_page: 8
     - id: 6
-      label: "Shortcuts"
-      icon: "book"
+      label: "→ Windows"
+      icon: "9"
       steps:
-        # EDIT: point at the shortcut reference file if you keep one
-        - open: "C:\\Templar Archives"
+        - go_to_page: 9
     - id: 7
-      label: "Sync Console"
-      icon: "sync"
+      label: "Mute"
+      icon: "mute"
       steps:
-        # EDIT: path inferred from your old profile — verify before use
-        - run: "C:\\Templar Archives\\Basketball Bro\\beer-league\\sync\\Start Sync Console.bat"
+        # From the folded Media page. CHECK: media key name
+        - key: "VolumeMute"
     - id: 8
       label: "Home"
       icon: "home"
       steps:
-        - go_to_page: 1
+        - go_to_page: 2
 
 # ---------------------------------------------------------------------------
 # Dials (informational — apply manually in Options+)
-# Loupedeck stores dial bindings in a separate file that's easy to corrupt on
-# re-import, so these are documented here and NOT written into the JSON.
+# Loupedeck stores dial bindings separately and they are easy to corrupt on
+# re-import, so they are documented here and NOT written into the .lp5.
 # ---------------------------------------------------------------------------
 dials:
   general: "Scroll"
   deepseek: "Scroll long answers"
   cursor: "Switch editor tabs"
   windows: "Switch virtual desktops"
-  media: "Volume"
+  volume: "Volume (any page; the Media page was folded into Home and Index)"
   roller: "Zoom / fine scroll (per profile — verify exact options)"
