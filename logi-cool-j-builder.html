@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Logi Cool J — MX Console Builder</title>
-<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<!-- Local copies, so the page works offline. Keep the lib folder next to this file. -->
+<script src="lib/js-yaml.min.js"></script>
+<script src="lib/ai-assist.js"></script>
 <style>
 /* =========================================================
    SPACE THEME — LIGHT, DAWN-IN-ORBIT (Upgraded Visuals)
@@ -980,7 +982,12 @@ textarea.code {
    ========================================================= */
 .llm-body { display: flex; flex-direction: column; gap: 9px; }
 .llm-controls { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
-#llm-out { min-height: 130px; }
+#llm-out { min-height: 110px; }
+#llm-answer { min-height: 90px; }
+#llm-settings summary { cursor: pointer; }
+.llm-settings-body { display: flex; flex-direction: column; gap: 7px; margin-top: 7px; }
+#llm-status.err { color: #c0392b; }
+.llm-note { font-size: 12px; opacity: .85; line-height: 1.4; }
 
 /* =========================================================
    PROFILES
@@ -1411,29 +1418,54 @@ textarea.code {
       <div class="card-title">
         <span class="card-grip" title="Drag card to reorder">⋮⋮</span>
         <span class="dot dot-llm"></span>
-        LLM Prompt & Local Assistant
+        AI Assist
       </div>
       <div class="card-tools">
         <button class="mini" id="btn-llm-copy" title="Copy prompt">📋</button>
       </div>
     </div>
     <div class="llm-body">
-      <label class="lbl">Describe the macro or YAML button</label>
+      <label class="lbl" for="llm-input">Describe the key (or the macro)</label>
       <textarea id="llm-input" class="input" rows="2"
         placeholder="e.g. Open Windows Terminal in C:\Projects, type git status, press Enter"></textarea>
       <div class="llm-controls">
-        <select id="llm-target" class="select compact">
-          <option value="yaml">Keypad YAML Steps</option>
+        <select id="llm-target" class="select compact" aria-label="What to ask for">
+          <option value="yaml">Keypad key (YAML)</option>
           <option value="ahk">AutoHotkey v2</option>
           <option value="ps">PowerShell 5.1</option>
           <option value="both">AHK + PowerShell</option>
         </select>
         <button class="btn btn-sm btn-primary" id="btn-llm-build">Build Prompt</button>
-        <button class="btn btn-sm" id="btn-llm-ollama" title="Send directly to local Ollama (http://localhost:11434)">⚡ Ask Local Ollama</button>
-        <input type="text" id="llm-model" class="input compact" style="width:170px" aria-label="Ollama model" placeholder="qwen2.5-coder:latest">
+        <button class="btn btn-sm" id="btn-llm-copy-prompt" title="Copy the prompt, paste it into any chat">📋 Copy prompt</button>
+        <button class="btn btn-sm" id="btn-llm-ask" disabled title="Turn on the endpoint in AI endpoint settings first">⚡ Ask endpoint</button>
       </div>
-      <label class="lbl">Prompt / Local LLM Output</label>
-      <textarea id="llm-out" class="code" spellcheck="false" placeholder="Prompt or local LLM output will appear here…"></textarea>
+      <label class="lbl" for="llm-out">Prompt</label>
+      <textarea id="llm-out" class="code" spellcheck="false" placeholder="Build Prompt puts the prompt here. Copy it into any chat."></textarea>
+      <label class="lbl" for="llm-answer">Answer (paste the chat's reply here)</label>
+      <textarea id="llm-answer" class="code" spellcheck="false" placeholder="```yaml&#10;label: &quot;Git status&quot;&#10;steps:&#10;  - text: &quot;git status&quot;&#10;  - key: &quot;Return&quot;&#10;```"></textarea>
+      <div class="llm-controls">
+        <button class="btn btn-sm btn-emerald" id="btn-llm-apply" title="Put the answer's label and steps on the selected keypad button">Apply to button #0</button>
+        <span id="llm-status" class="lbl" role="status"></span>
+      </div>
+      <details id="llm-settings">
+        <summary class="lbl" id="llm-settings-summary">⚙ AI endpoint: off</summary>
+        <div class="llm-settings-body">
+          <label class="llm-note"><input type="checkbox" id="llm-enabled"> Use an endpoint (off by default; nothing leaves this page unless this is on and you click Ask)</label>
+          <label class="lbl" for="llm-endpoint">Endpoint URL</label>
+          <input type="text" id="llm-endpoint" class="input compact" spellcheck="false" placeholder="http://localhost:8000/v3/chat/completions">
+          <div class="llm-controls">
+            <label class="lbl" for="llm-format">Format</label>
+            <select id="llm-format" class="select compact">
+              <option value="auto">Auto (from the URL)</option>
+              <option value="openai">OpenAI-compatible (/chat/completions)</option>
+              <option value="ollama">Ollama (/api/generate or /api/chat)</option>
+            </select>
+            <label class="lbl" for="llm-model">Model</label>
+            <input type="text" id="llm-model" class="input compact" style="width:190px" spellcheck="false" placeholder="model name the server serves">
+          </div>
+          <div class="llm-note">Ollama: http://localhost:11434/api/generate · OVMS / LM Studio / llama.cpp: …/v1 or /v3/chat/completions. Local servers only; no API keys are stored. If Ask fails, the copy and paste path above still works.</div>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -1993,6 +2025,7 @@ function renderAll() {
   renderKeypadPanel();
   renderLibrary();
   renderProfiles();
+  renderAiSettings();
   applyVisibility();
 }
 
@@ -2131,6 +2164,7 @@ function renderKeypadPanel() {
 
   showValidation(validateProfileForYaml(ap), `✓ YAML valid (${ap.pages.length} pages, button #${btnIdx} ready).`);
   $("kp-btn-undo").disabled = !STATE.undo || STATE.undo.profileId !== ap.id;
+  $("btn-llm-apply").textContent = `Apply to button #${btnIdx} (page ${pageIdx + 1})`;
 }
 
 /* Undo (one level) for copy/move/swap/clear/drag */
@@ -3006,28 +3040,44 @@ document.querySelectorAll(".rt-btn").forEach(b => {
 });
 
 /* =========================================================
-   LLM PROMPT & LOCAL OLLAMA CONNECTOR
+   AI ASSIST (lib/ai-assist.js)
+   Copy prompt → any chat → paste answer → Apply always works.
+   The endpoint is optional and off by default.
    ========================================================= */
+function aiSettings() {
+  const d = STATE.data;
+  if (!d.ai || typeof d.ai !== "object") {
+    d.ai = { enabled: false, endpoint: "", format: "auto", model: d.ollamaModel || "" };
+    delete d.ollamaModel;
+  }
+  return d.ai;
+}
+
+function renderAiSettings() {
+  const ai = aiSettings();
+  $("llm-enabled").checked = !!ai.enabled;
+  if (document.activeElement !== $("llm-endpoint")) $("llm-endpoint").value = ai.endpoint || "";
+  if (document.activeElement !== $("llm-model")) $("llm-model").value = ai.model || "";
+  $("llm-format").value = ai.format || "auto";
+  const ready = ai.enabled && /^https?:\/\//i.test(ai.endpoint || "");
+  $("btn-llm-ask").disabled = !ready;
+  $("btn-llm-ask").title = ready ? "Send the prompt to " + ai.endpoint : "Turn on the endpoint in AI endpoint settings first";
+  $("llm-settings-summary").textContent = "⚙ AI endpoint: " + (ai.enabled ? (ai.endpoint ? "on (" + ai.endpoint + ")" : "on, no URL yet") : "off");
+}
+
+function llmStatus(msg, isErr) {
+  const s = $("llm-status");
+  s.textContent = msg || "";
+  s.classList.toggle("err", !!isErr);
+}
+
 function buildLlmPromptText() {
   const input = $("llm-input").value.trim();
   const target = $("llm-target").value;
   if (!input) return null;
 
   if (target === "yaml") {
-    return `You are generating a YAML button definition for a Logitech MX Creative Console (.lp5 converter).
-Output ONLY valid YAML for a single button object with:
-- label: short string (<= 12 chars)
-- steps: list of single-key step objects. Allowed keys:
-  - key: "Ctrl+Shift+T" (mods: Ctrl, Shift, Alt, Win; keys: Return, Tab, Space, Escape, Backspace, Delete, F1-F24, letters, digits)
-  - text: "string to type" (never include secrets/API keys)
-  - wait: 500 (integer ms)
-  - url: "https://..."
-  - open: "C:\\\\path\\\\app.exe"
-  - run: "C:\\\\path\\\\script.bat"
-  - go_to_page: 1 (must be the only step if used)
-
-USER REQUEST:
-${input}`;
+    return AiAssist.buttonPrompt(input, { pageCount: STATE.activeProfile().pages.length });
   }
 
   const targetLabel = target === "ahk" ? "AutoHotkey v2" : target === "ps" ? "PowerShell 5.1" : "AutoHotkey v2 AND PowerShell 5.1";
@@ -3050,34 +3100,66 @@ $("btn-llm-build").addEventListener("click", () => {
   const prompt = buildLlmPromptText();
   if (!prompt) { toast("Describe the action first"); return; }
   $("llm-out").value = prompt;
+  llmStatus("Prompt ready. Copy it into any chat, then paste the reply under Answer.");
   toast("Prompt built");
 });
 
-$("btn-llm-ollama").addEventListener("click", async () => {
+function copyPrompt() {
+  const txt = $("llm-out").value || buildLlmPromptText() || "";
+  if (!txt) { toast("Describe the action first"); return; }
+  $("llm-out").value = txt;
+  const done = () => { llmStatus("Prompt copied. Paste the chat's reply under Answer."); toast("Copied to clipboard"); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done, () => { $("llm-out").select(); toast("Select-all is on: press Ctrl+C"); });
+  } else { $("llm-out").select(); toast("Select-all is on: press Ctrl+C"); }
+}
+$("btn-llm-copy").addEventListener("click", copyPrompt);
+$("btn-llm-copy-prompt").addEventListener("click", copyPrompt);
+
+$("btn-llm-ask").addEventListener("click", async () => {
+  const ai = aiSettings();
   const prompt = buildLlmPromptText();
   if (!prompt) { toast("Describe the action first"); return; }
-  $("llm-out").value = "⏳ Querying local Ollama (http://localhost:11434/api/generate)...";
+  $("llm-out").value = prompt;
+  if (!ai.enabled) { llmStatus("The endpoint is off. Copy the prompt instead.", true); return; }
+  $("btn-llm-ask").disabled = true;
+  llmStatus("⏳ Asking " + ai.endpoint + " …");
   try {
-    const res = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: ($("llm-model").value.trim() || "qwen2.5-coder:latest"), prompt, stream: false })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || res.status);
-    $("llm-out").value = data.response || JSON.stringify(data, null, 2);
-    toast("Received response from local Ollama");
-  } catch {
-    $("llm-out").value = prompt;
-    toast("Local Ollama not detected on :11434 — placed prompt in box to copy");
+    const answer = await AiAssist.ask({ endpoint: ai.endpoint, model: ai.model, format: ai.format, prompt });
+    $("llm-answer").value = answer;
+    llmStatus($("llm-target").value === "yaml" ? "Answer received. Check it, then Apply." : "Answer received.");
+  } catch (e) {
+    llmStatus(e.message + " The prompt is above: copy it into any chat instead.", true);
+  } finally {
+    renderAiSettings();
   }
 });
 
-$("btn-llm-copy").addEventListener("click", () => {
-  const txt = $("llm-out").value;
-  if (!txt) return;
-  navigator.clipboard.writeText(txt).then(() => toast("Copied to clipboard"));
+$("btn-llm-apply").addEventListener("click", () => {
+  const text = $("llm-answer").value.trim();
+  if (!text) { llmStatus("Paste the chat's reply under Answer first.", true); return; }
+  let parsed;
+  try { parsed = AiAssist.parseButton(text, jsyaml); }
+  catch (e) { llmStatus(e.message, true); return; }
+  if (parsed.steps.some(s => SECRET_PATTERNS.some(rx => rx.test(String(s.value))))) {
+    llmStatus("Refused: the answer contains something that looks like an API key or password.", true);
+    return;
+  }
+  const idx = STATE.activeBtnIndex();
+  snapshotForUndo("AI apply");
+  const b = STATE.getButton(idx);
+  if (parsed.label) b.label = parsed.label;
+  b.steps = parsed.steps.map(s => ({ type: s.type, value: String(s.value) }));
+  persist();
+  renderAll();
+  llmStatus(`Applied to button #${idx} (${b.steps.length} step${b.steps.length === 1 ? "" : "s"}). Undo is available.`);
+  toast(`Applied to button #${idx}`);
 });
+
+$("llm-enabled").addEventListener("change", (e) => { aiSettings().enabled = e.target.checked; persist(); renderAiSettings(); });
+$("llm-endpoint").addEventListener("input", (e) => { aiSettings().endpoint = e.target.value.trim(); persist(); renderAiSettings(); });
+$("llm-model").addEventListener("input", (e) => { aiSettings().model = e.target.value.trim(); persist(); });
+$("llm-format").addEventListener("change", (e) => { aiSettings().format = e.target.value; persist(); renderAiSettings(); });
 
 /* =========================================================
    YAML EXPORT / IMPORT (Matches HANDOUT-keypad-addon.md)
@@ -3446,8 +3528,9 @@ document.addEventListener("keydown", (e) => {
   if (!$("editor-modal").hidden) { closeEditor(); return; }
   if (cancelClipboardOp()) toast("Cancelled");
 });
-$("llm-model").value = STATE.data.ollamaModel || "";
-$("llm-model").addEventListener("input", (e) => { STATE.data.ollamaModel = e.target.value.trim(); persist(); });
+if (typeof jsyaml === "undefined" || typeof AiAssist === "undefined") {
+  setTimeout(() => toast("⚠ lib\\js-yaml.min.js or lib\\ai-assist.js is missing. Keep the lib folder next to this page.", 8000), 300);
+}
 
 initDraggableCards();
 renderAll();

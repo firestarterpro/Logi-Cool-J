@@ -3,23 +3,21 @@ const path = require('path');
 const fs = require('fs'); const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const HTML = require('url').pathToFileURL(path.join(ROOT, 'logi-cool-j-builder.html')).href;
-// js-yaml is served locally so the test needs no CDN: npm pack js-yaml@4.1.0, then copy dist/js-yaml.min.js here.
-const JSY = fs.readFileSync(path.join(__dirname, 'js-yaml.min.js'), 'utf8');
+// The page loads js-yaml and ai-assist from ../lib, so any http(s) request is a failure.
 const OUT = fs.mkdtempSync(path.join(require('os').tmpdir(), 'lcj-'));
 // Windows has no python3 (only a Store stub), so default to python there.
 const PY = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
-const results = []; const ok =(name, cond, extra='') => { results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? '  — ' + extra : ''}`); };
+const results = []; const ok = (name, cond, extra='') => { results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? '  — ' + extra : ''}`); };
 
 async function newPage(browser, preload) {
   const ctx = await browser.newContext({ acceptDownloads: true });
-  await ctx.route('https://cdn.jsdelivr.net/**', r => r.fulfill({ body: JSY, contentType: 'application/javascript' }));
   await ctx.addInitScript(() => { delete window.showSaveFilePicker; });
   if (preload) await ctx.addInitScript(preload);
   const page = await ctx.newPage();
   page.errors = []; page.netReqs = [];
   page.on('pageerror', e => page.errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') page.errors.push(m.text()); });
-  page.on('request', r => { const u = r.url(); if (!u.startsWith('file:') && !u.startsWith('data:') && !u.startsWith('blob:') && !u.includes('cdn.jsdelivr')) page.netReqs.push(u); });
+  page.on('request', r => { const u = r.url(); if (!u.startsWith('file:') && !u.startsWith('data:') && !u.startsWith('blob:')) page.netReqs.push(u); });
   await page.goto(HTML);
   return { ctx, page };
 }
@@ -177,11 +175,71 @@ print(len(pg), 'yes' in txt, nav.endswith(pg[1]['name']), pg[1]['displayName'])`
   await ctx.close();
   ({ ctx, page } = await newPage(browser, () => {
     if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1');
-      localStorage.setItem('mx-console-v3', JSON.stringify({ version: 3, activeProfileId: 'mx-main', profiles: [{ id: 'mx-main', name: 'Orig', pages: [{ id: 'pg1', name: 'Home', buttons: Array.from({length: 9}, (_, i) => ({ id: i, emoji: '', label: i ? '' : 'X', imageData: null, tags: [], steps: i ? [] : [{ type: 'key', value: 'Ctrl+C' }], ahk: '', ps: '', recipe: '', notes: '', testedAt: null })) }], activePageId: 'pg1', activeButtonIndex: null, panelVisibility: { console: true, library: true, profiles: true, llm: true } }], savedActions: [], runtime: 'ahk', filters: { search: '', tag: 'all' } })); }
+      localStorage.setItem('mx-console-v3', JSON.stringify({ version: 3, activeProfileId: 'mx-main', profiles: [{ id: 'mx-main', name: 'Orig', pages: [{ id: 'pg1', name: 'Home', buttons: Array.from({length: 9}, (_, i) => ({ id: i, emoji: '', label: i ? '' : 'X', imageData: null, tags: [], steps: i ? [] : [{ type: 'key', value: 'Ctrl+C' }], ahk: '', ps: '', recipe: '', notes: '', testedAt: null })) }], activePageId: 'pg1', activeButtonIndex: null, panelVisibility: { console: true, library: true, profiles: true, llm: true } }], savedActions: [], runtime: 'ahk', filters: { search: '', tag: 'all' }, ollamaModel: 'qwen2.5-coder:latest' })); }
   }));
   p = await prof(page);
   ok('original-builder v3 save loads unchanged', p.name === 'Orig' && p.pages[0].buttons[0].label === 'X' && p.lp5Id === 'mx-main');
+  ok('old Ollama model moves into AI settings, endpoint stays off', await page.evaluate(() => STATE.data.ai.model === 'qwen2.5-coder:latest' && STATE.data.ai.enabled === false && !('ollamaModel' in STATE.data)));
   ok('no JS errors on legacy loads', page.errors.length === 0, page.errors.join(' | '));
+  await ctx.close();
+
+  // A2: offline load + AI assist (copy/paste path, then mocked endpoints)
+  ({ ctx, page } = await newPage(browser));
+  page.on('dialog', d => d.accept());
+  ok('js-yaml and ai-assist load from lib/, no network', await page.evaluate(() => typeof jsyaml === 'object' && typeof AiAssist === 'object') && page.netReqs.length === 0, page.netReqs.join(','));
+  ok('AI endpoint off by default, Ask disabled', await page.evaluate(() => STATE.data.ai.enabled === false && STATE.data.ai.endpoint === '') && await page.isDisabled('#btn-llm-ask'));
+  await page.fill('#llm-input', 'Save the file');
+  await page.click('#btn-llm-build');
+  const promptTxt = await page.inputValue('#llm-out');
+  ok('Build Prompt gives a copyable key prompt', promptTxt.includes('Save the file') && promptTxt.includes('go_to_page') && promptTxt.includes('```yaml'));
+  await cell(page, 4);
+  await page.fill('#llm-answer', 'Sure! Here it is:\n```yaml\nlabel: "Save"\nsteps:\n  - key: "Ctrl+S"\n  - wait: 200\n```\nDone.');
+  await page.click('#btn-llm-apply');
+  p = await prof(page);
+  ok('pasted answer applies to the selected button', p.pages[0].buttons[4].label === 'Save' && JSON.stringify(p.pages[0].buttons[4].steps) === JSON.stringify([{ type: 'key', value: 'Ctrl+S' }, { type: 'wait', value: '200' }]), JSON.stringify(p.pages[0].buttons[4].steps));
+  await page.click('#kp-btn-undo');
+  p = await prof(page); ok('AI apply can be undone', !p.pages[0].buttons[4].label);
+  const SECRET2 = 'sk-' + 'abcdefghijklmnopqrstuvwx';
+  await page.fill('#llm-answer', `label: "Bad"\nsteps:\n  - text: "${SECRET2}"`);
+  await page.click('#btn-llm-apply');
+  p = await prof(page); let st = await page.textContent('#llm-status');
+  ok('answer with a secret is refused, value not echoed', !p.pages[0].buttons[4].label && /API key/.test(st) && !st.includes(SECRET2), st);
+  await page.fill('#llm-answer', 'label: "X"\nsteps:\n  - launch: "calc"');
+  await page.click('#btn-llm-apply');
+  st = await page.textContent('#llm-status');
+  ok('answer with an unknown step is refused', /unknown step 'launch'/.test(st), st);
+  ok('copy/paste path made no network request', page.netReqs.length === 0, page.netReqs.join(','));
+  let seen = null;
+  const capture = (body) => async r => { seen = { url: r.request().url(), body: JSON.parse(r.request().postData() || '{}') }; await r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) }); };
+  await ctx.route('http://localhost:8000/**', capture({ choices: [{ message: { content: '<think>hmm</think>\n```yaml\nlabel: "Term"\nsteps:\n  - open: "wt.exe"\n```' } }] }));
+  await page.click('#llm-settings summary');
+  await page.check('#llm-enabled');
+  await page.fill('#llm-endpoint', 'http://localhost:8000/v3/chat/completions');
+  await page.fill('#llm-model', 'qwen3-8b');
+  ok('Ask enabled once the endpoint is on', !(await page.isDisabled('#btn-llm-ask')));
+  await page.click('#btn-llm-ask');
+  await page.waitForFunction(() => document.getElementById('llm-answer').value.includes('Term'), null, { timeout: 10000 });
+  ok('OpenAI-compatible request shape', seen && seen.url === 'http://localhost:8000/v3/chat/completions' && seen.body.model === 'qwen3-8b' && seen.body.messages[0].content.includes('Save the file'), JSON.stringify(seen && { url: seen.url, model: seen.body.model }));
+  await page.click('#btn-llm-apply');
+  p = await prof(page); ok('endpoint answer applies (think block dropped)', p.pages[0].buttons[4].label === 'Term' && p.pages[0].buttons[4].steps[0].value === 'wt.exe');
+  seen = null;
+  await ctx.route('http://localhost:11434/**', capture({ response: 'label: "Olla"\nsteps:\n  - url: "https://ollama.com"' }));
+  await page.fill('#llm-endpoint', 'http://localhost:11434');
+  await page.click('#btn-llm-ask');
+  await page.waitForFunction(() => document.getElementById('llm-answer').value.includes('Olla'), null, { timeout: 10000 });
+  ok('Ollama base URL gets /api/generate with prompt', seen && seen.url === 'http://localhost:11434/api/generate' && typeof seen.body.prompt === 'string' && seen.body.stream === false, JSON.stringify(seen && { url: seen.url }));
+  await ctx.unroute('http://localhost:8000/**');
+  await ctx.route('http://localhost:8000/**', r => r.abort());
+  await page.fill('#llm-endpoint', 'http://localhost:8000/v3/chat/completions');
+  await page.click('#btn-llm-ask');
+  await page.waitForFunction(() => document.getElementById('llm-status').classList.contains('err'), null, { timeout: 10000 });
+  st = await page.textContent('#llm-status');
+  ok('endpoint down: readable error, prompt kept for copying', /Could not reach/.test(st) && (await page.inputValue('#llm-out')).includes('Save the file'), st);
+  await page.reload();
+  ok('endpoint settings persist', await page.evaluate(() => STATE.data.ai.enabled === true && STATE.data.ai.model === 'qwen3-8b'));
+  // The aborted request above logs "Failed to load resource" on purpose; anything else is a real error.
+  const aiErrors = page.errors.filter(e => !/Failed to load resource/.test(e));
+  ok('no JS errors in AI assist flow', aiErrors.length === 0, aiErrors.join(' | '));
   await ctx.close();
   await browser.close();
   console.log(results.join('\n'));
