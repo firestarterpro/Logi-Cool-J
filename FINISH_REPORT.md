@@ -1,7 +1,7 @@
 # logi-cool-j: finish report (partial, stopped on budget)
 
 Written 2026-11-11 by Claude Code (Opus 5.5), working from `CLAUDE_CODE_FINISH.md`.
-**Status: Track A, B1, B2, B3 and B4 done (B2's C# tests compile but could not be run here; see Smart App Control below). Remaining, one unit per fresh session, in this order: B5, then Finish.**
+**Status: Track A and B1-B5 done (B2's C# tests compile but could not be run here; see Smart App Control below). Only Finish remains (one fresh session).**
 
 ## Process changes (owner, 2026-11-11)
 1. One unit per session: each later session takes the next unit in the order above, commits, updates this report and stops.
@@ -21,6 +21,7 @@ Written 2026-11-11 by Claude Code (Opus 5.5), working from `CLAUDE_CODE_FINISH.m
 | `5592c32` | B2: plugin, Core library, xUnit tests |
 | `dcc39f1` | B3: `slots.lp5`, `slots-actions.lp5`, `slots-10pages.lp5` and `v2\Install-Plugin.ps1` |
 | `85e4d95` | B4: `v2\editor\keys-editor.html` (3x3 grid, quick picks, shortcut recorder, AI box, paths drawer) and Playwright tests |
+| (this unit) | B5: `v2\device-test.yaml` and generated `v2\device-test.lp5` |
 
 ## Changes per unit
 - **Windows fixes (before A1).** The converter asked Pillow for `DejaVuSans-Bold.ttf`, which Windows lacks, so it could not build any `.lp5` on this PC. It now falls back to Segoe UI Bold / Arial Bold / Pillow's font. `tests\ui-smoke.js` defaults to `python` on Windows (`python3` is a Store stub), pins Playwright 1.64.1 (`tests\package.json`; matches the browsers LLM Explorer already cached), exits 1 on any FAIL.
@@ -57,6 +58,10 @@ Written 2026-11-11 by Claude Code (Opus 5.5), working from `CLAUDE_CODE_FINISH.m
   - Shared AI Assist box using `lib\ai-assist.js` and `lib\js-yaml.min.js`: build copyable key prompts, query local Ollama / OpenAI-compatible endpoint with persisted settings, and apply YAML answers with secret checks.
   - Native File System Access API (`showOpenFilePicker` / `showSaveFilePicker`) saves directly to `keys.yaml` (prompts once per session), falling back to browser download.
   - Added dedicated Playwright test suite `tests\test-keys-editor.js` (15/15 passing) integrated into `tests\ui-smoke.js` (65/65 browser tests total, all passing).
+- **B5 device test page** (`v2\device-test.yaml`, `v2\device-test.lp5`).
+  - One page, nine keys, one per step type; each key's comment in the YAML says what to expect. 0 Notepad (`open`; press first), 1 Arrows (text + Left/Right/Up/Down; Notepad should read `aLUbR` / `cdD`), 2 Backtick (a ` appears), 3 Media (MediaPlayPause, wait, MediaPlayPause: toggles and toggles back), 4 Text+Wait, 5 Paste (`text_mode: paste`), 6 URL (example.com), 7 Run file (`run` on README.md via a paths variable), 8 GoTo 1 (`go_to_page` to itself; no visible change, no error).
+  - Same file serves both routes: `device-test.lp5` (native, tests Options+ names `ArrowLeft`, `Backquote`, `MediaPlayPause`) and the plugin's `t0..t8` slots (read it live; plugin names `Oem3` etc.). A key that works in one and not the other says which name to fix.
+  - Built with `python lp5-build\yaml2lp5.py v2\device-test.yaml v2\device-test.lp5` after `--check` said OK: 1 page, 7 macros, 1 file action, 8 icons. The converter lists the unverified names: Down, Left, Right, Up, `, MediaPlayPause. `.lp5` is git-ignored like the others, so rebuild it with that command. No tests run (owner's instruction for this session); the plugin loading this file was not exercised.
 
 ## Smart App Control blocks new unsigned DLLs (found in B2)
 Smart App Control is in **enforce** mode on this PC (`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState = 1`; Code Integrity events 3033/3077/3118). It blocked the xUnit test DLL ("An Application Control policy has blocked this file", 0x800711C7), also after a rebuild under another name, so **the C# tests compile but have never run**. Verdicts are per file: `LogiCoolJPlugin.dll` and `LogiCoolJ.Core.dll` did load in pwsh, but whether the Logi Plugin Service may load them is device-only. Nothing was changed: turning Smart App Control off is the owner's decision, and on Windows 11 it cannot be turned back on without resetting Windows. Options for the owner: run the C# tests on a machine without SAC enforcement; or sign the DLLs; or decide about SAC. The Python and Playwright tests are unaffected.
@@ -89,8 +94,7 @@ Device-only (not testable here): whether Options+ accepts the imported `.lp5` an
 
 B2 ran: `dotnet build v2\LogiCoolJ.sln -c Release` (0 warnings, 0 errors) in both slot forms; output checked; Python tests still 37 OK. Not run: the xUnit tests (blocked, above), anything in the Logi Plugin Service.
 
-## Next units (one per session)
-- **B5**: `v2\device-test.yaml` (one page, one key per step type incl. arrows, backtick, media keys; the plugin's `t0..t8` slots already read it) and a native `device-test.lp5` from the converter.
+## Next unit (one session)
 - **Finish**: README for both tracks (fix the "stable IDs" claim), final FINISH_REPORT with the device checklist (Track A first, then Track B yes/no checks 1–5 each with its fallback). No subagent review here.
 
 ## SDK notes (research done in the first session)
@@ -109,4 +113,9 @@ SDK facts checked 2026-11-11 (docs `llms-full.txt`, reflection on PluginApi 6.1.
 5. With the script in front in Cursor, press **Run Script**, then **Copy Result** and paste somewhere; then **Recycle Run**.
 6. Press **Open Clip** with code on the clipboard, then **Ask Cursor**.
 7. Home page: press Gateway, Claude, AI Control, Ref Drafts. Note any that do not open.
-8. Windows page arrows, Cursor page Terminal (backtick), Home PlayPause, Index Mute: note which do nothing (unconfirmed key names).
+8. Optional quick check: import `v2\device-test.lp5`, press key 0 then keys 1-5 and compare Notepad with the comments in `v2\device-test.yaml`; this settles arrow, backtick and media key names. Then Windows page arrows, Cursor page Terminal (backtick), Home PlayPause, Index Mute: note which do nothing (unconfirmed key names).
+
+## Decisions (B5)
+11. Nine keys cannot hold seven step types plus arrows, backtick and media separately, so arrows share one macro with text (self-checking text in Notepad), and Media is one key that presses PlayPause twice; `wait` and `text` share key 4. `go_to_page 1` on a one-page profile is the page-switch check.
+12. Notepad is the observation surface: nothing on this page is destructive, uses secrets or leaves this folder (`run` opens README.md).
+13. Commits for this unit use the Sonnet 5.5 co-author trailer after the owner updated the model mid-session.
