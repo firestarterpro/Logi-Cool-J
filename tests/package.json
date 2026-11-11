@@ -1,0 +1,11 @@
+{
+  "name": "logi-cool-j-tests",
+  "private": true,
+  "description": "Browser tests for the Logi Cool J builder and the v2 editor.",
+  "scripts": {
+    "test": "node ui-smoke.js"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}

@@ -6,7 +6,9 @@ const HTML = require('url').pathToFileURL(path.join(ROOT, 'logi-cool-j-builder.h
 // js-yaml is served locally so the test needs no CDN: npm pack js-yaml@4.1.0, then copy dist/js-yaml.min.js here.
 const JSY = fs.readFileSync(path.join(__dirname, 'js-yaml.min.js'), 'utf8');
 const OUT = fs.mkdtempSync(path.join(require('os').tmpdir(), 'lcj-'));
-const results = []; const ok = (name, cond, extra='') => { results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? '  — ' + extra : ''}`); };
+// Windows has no python3 (only a Store stub), so default to python there.
+const PY = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const results = []; const ok =(name, cond, extra='') => { results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? '  — ' + extra : ''}`); };
 
 async function newPage(browser, preload) {
   const ctx = await browser.newContext({ acceptDownloads: true });
@@ -134,9 +136,9 @@ async function addStep(page, type, value) {
   fs.writeFileSync(path.join(OUT, 'exported.yaml'), y);
   // converter
   const conv = path.join(ROOT, 'lp5-build', 'yaml2lp5.py');
-  const o = execFileSync(process.env.PYTHON || 'python3', [conv, yPath, path.join(OUT, 'test.lp5')], { encoding: 'utf8' });
+  const o = execFileSync(PY, [conv, yPath, path.join(OUT, 'test.lp5')], { encoding: 'utf8' });
   ok('converter accepts exported YAML', /2 pages/.test(o), o.trim());
-  const chk = execFileSync(process.env.PYTHON || 'python3', ['-c', `
+  const chk = execFileSync(PY, ['-c', `
 import zipfile,json
 d=json.loads(zipfile.ZipFile('${OUT.replace(/\\/g, '/')}/test.lp5').read('ProfileInfo.json'))
 ws=d['layout']['layoutModes'][0]['workspaces'][0]; pg=ws['pressPages']
@@ -184,4 +186,6 @@ print(len(pg), 'yes' in txt, nav.endswith(pg[1]['name']), pg[1]['displayName'])`
   await browser.close();
   console.log(results.join('\n'));
   console.log(`\n${results.filter(r => r.startsWith('PASS')).length}/${results.length} passed`);
+  fs.rmSync(OUT, { recursive: true, force: true });
+  if (results.some(r => r.startsWith('FAIL'))) process.exitCode = 1;
 })().catch(e => { console.log(results.join('\n')); console.error('CRASH', e); process.exit(1); });

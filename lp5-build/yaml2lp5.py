@@ -97,12 +97,30 @@ def is_uri(t):
     return re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]+:(?!\\)", t) is not None
 
 
+# DejaVu ships with most Linux installs; Windows has Segoe UI and Arial instead.
+FONT_CANDIDATES = ("DejaVuSans-Bold.ttf", "segoeuib.ttf", "arialbd.ttf", "seguisb.ttf")
+_font_cache = {}
+
+
+def load_font(size):
+    if size not in _font_cache:
+        for name in FONT_CANDIDATES:
+            try:
+                _font_cache[size] = ImageFont.truetype(name, size)
+                break
+            except OSError:
+                continue
+        else:
+            _font_cache[size] = ImageFont.load_default(size)
+    return _font_cache[size]
+
+
 def render_icon(label, color, size=192):
     img = Image.new("RGBA", (size, size), color)
     d = ImageDraw.Draw(img)
     text = label.strip() or " "
     for fs in range(44, 14, -2):
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", fs)
+        font = load_font(fs)
         words, lines, cur = text.split(), [], ""
         for w in words:
             t = (cur + " " + w).strip()
