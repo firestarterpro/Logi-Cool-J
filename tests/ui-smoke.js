@@ -246,4 +246,10 @@ print(len(pg), 'yes' in txt, nav.endswith(pg[1]['name']), pg[1]['displayName'])`
   console.log(`\n${results.filter(r => r.startsWith('PASS')).length}/${results.length} passed`);
   fs.rmSync(OUT, { recursive: true, force: true });
   if (results.some(r => r.startsWith('FAIL'))) process.exitCode = 1;
+
+  // Also run the v2 keys-editor Playwright test suite
+  const v2Script = path.join(__dirname, 'test-keys-editor.js');
+  if (fs.existsSync(v2Script)) {
+    execFileSync(process.execPath, [v2Script], { stdio: 'inherit' });
+  }
 })().catch(e => { console.log(results.join('\n')); console.error('CRASH', e); process.exit(1); });

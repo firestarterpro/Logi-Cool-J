@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logi Cool J: keys.yaml Editor</title>
+  <script src="../../lib/js-yaml.min.js"></script>
+  <script src="../../lib/ai-assist.js"></script>
+  <style>
+    :root {
+      --bg: #0f141c;
+      --card-bg: #18202c;
+      --border: #283548;
+      --border-focus: #3b82f6;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --danger-bg: #450a0a;
+      --key-size: 104px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+    .header-titles h1 { font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .header-titles p { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    button { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px; }
+    button:hover { background: #222d3d; border-color: #3b4c65; }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 500; }
+    button.primary:hover { background: var(--primary-hover); }
+    button.danger { background: var(--danger-bg); border-color: #7f1d1d; color: #fca5a5; }
+    button.danger:hover { background: #5a0d0d; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input, select, textarea { background: #0c1017; border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 10px; font-size: 0.85rem; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--border-focus); }
+    textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+    /* Main layout: left grid + tabs, right panel */
+    .workspace { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } }
+
+    /* Left column */
+    .left-col { display: flex; flex-direction: column; gap: 12px; }
+    .page-tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; max-width: 340px; }
+    .page-tab { padding: 6px 10px; font-size: 0.8rem; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); cursor: pointer; white-space: nowrap; }
+    .page-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .grid-container { width: 336px; height: 336px; background: #070a0e; border: 2px solid var(--border); border-radius: 12px; padding: 10px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 8px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.5); }
+    .key-cell { border-radius: 8px; border: 2px solid rgba(255,255,255,0.08); background: #1a1a1a; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; cursor: pointer; user-select: none; position: relative; text-align: center; transition: transform 0.1s, border-color 0.1s; overflow: hidden; }
+    .key-cell:hover { border-color: rgba(255,255,255,0.3); }
+    .key-cell.selected { border-color: #60a5fa; box-shadow: 0 0 0 2px #60a5fa; }
+    .key-cell .key-id { position: absolute; top: 4px; left: 6px; font-size: 0.65rem; color: rgba(255,255,255,0.4); font-weight: 600; pointer-events: none; }
+    .key-cell .key-label { font-size: 0.85rem; font-weight: 600; color: #fff; line-height: 1.2; word-break: break-word; max-height: 3.6em; overflow: hidden; pointer-events: none; }
+    .key-cell .key-summary { font-size: 0.65rem; color: rgba(255,255,255,0.6); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; pointer-events: none; }
+    .key-cell.empty { background: #12161f; border-style: dashed; border-color: rgba(255,255,255,0.06); }
+    .key-cell.empty .key-label { color: rgba(255,255,255,0.2); font-weight: normal; font-size: 0.75rem; }
+
+    /* Global settings summary */
+    .profile-meta { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem; width: 336px; }
+    .profile-meta .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .profile-meta input, .profile-meta select { width: 180px; }
+
+    /* Right column: Single Key Editor Panel */
+    .editor-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .panel-header h2 { font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+    /* Quick picks bar */
+    .quick-picks-bar { display: flex; flex-direction: column; gap: 6px; background: #101622; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .quick-picks-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
+    .quick-picks-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick-btn { background: #1a2230; border-color: #2b394f; font-size: 0.8rem; padding: 4px 10px; }
+    .quick-btn:hover { background: #263347; border-color: #3b4c65; }
+
+    /* Button details row */
+    .btn-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: center; }
+    .field-group { display: flex; flex-direction: column; gap: 4px; }
+    .field-group label { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+
+    /* Steps list */
+    .steps-section { display: flex; flex-direction: column; gap: 8px; }
+    .steps-header { display: flex; justify-content: space-between; align-items: center; }
+    .steps-header span { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .step-list { display: flex; flex-direction: column; gap: 6px; }
+    .step-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; background: #0c1017; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+    .step-row select { width: 100%; }
+    .step-actions { display: flex; gap: 4px; }
+    .step-actions button { padding: 4px 8px; font-size: 0.75rem; }
+
+    /* Shortcut recorder box */
+    .shortcut-recorder { background: #0b1320; border: 2px dashed #3b82f6; border-radius: 8px; padding: 12px; display: none; flex-direction: column; gap: 8px; align-items: center; justify-content: center; text-align: center; }
+    .shortcut-recorder.active { display: flex; }
+    .recorder-keys { font-size: 1.1rem; font-weight: 700; color: #93c5fd; background: #172554; padding: 6px 14px; border-radius: 6px; min-width: 140px; border: 1px solid #1e40af; }
+
+    /* AI Box section */
+    .ai-box { background: #101622; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .ai-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+    .ai-header h3 { font-size: 0.85rem; font-weight: 600; color: #93c5fd; display: flex; align-items: center; gap: 6px; }
+    .ai-body { display: flex; flex-direction: column; gap: 8px; }
+    .ai-body.collapsed { display: none; }
+    .ai-settings-toggle { font-size: 0.75rem; color: var(--text-muted); cursor: pointer; text-decoration: underline; margin-left: auto; }
+    .ai-settings-pane { background: #0b1019; border: 1px solid var(--border); border-radius: 6px; padding: 8px; display: none; flex-direction: column; gap: 6px; font-size: 0.8rem; }
+    .ai-settings-pane.open { display: flex; }
+    .ai-status { font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; display: none; }
+    .ai-status.info { display: block; background: #1e3a5f; color: #93c5fd; }
+    .ai-status.err { display: block; background: #450a0a; color: #fca5a5; }
+
+    /* Paths modal */
+    .paths-drawer { display: none; flex-direction: column; gap: 8px; background: #0c1017; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 8px; }
+    .paths-drawer.open { display: flex; }
+    .paths-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+    .path-row { display: grid; grid-template-columns: 120px 1fr auto; gap: 6px; align-items: center; }
+
+    /* Notification toast */
+    #toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 6px; padding: 8px 14px; font-size: 0.85rem; box-shadow: 0 4px 12px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 999; }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-titles">
+      <h1>Logi Cool J <span>keys.yaml Editor</span></h1>
+      <p>Single-file visual keypad editor for Track B. Edits <code>v2\keys.yaml</code> live.</p>
+    </div>
+    <div class="header-actions">
+      <button id="btn-open-file" title="Load a keys.yaml file">Open keys.yaml</button>
+      <button id="btn-save-file" class="primary" title="Save directly to keys.yaml">Save keys.yaml</button>
+      <button id="btn-export-download" title="Download layout as keys.yaml">Download</button>
+      <button id="btn-toggle-paths" title="Edit ${name} path variables">Paths (<span id="paths-count">0</span>)</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <!-- Left column: page tabs, keypad grid, profile summary -->
+    <div class="left-col">
+      <div class="page-tabs" id="page-tabs"></div>
+      <div class="grid-container" id="key-grid"></div>
+      <div class="profile-meta">
+        <div class="row">
+          <label for="prof-name">Layout Name:</label>
+          <input type="text" id="prof-name" placeholder="MX 10-Page Layout">
+        </div>
+        <div class="row">
+          <label for="prof-pages">Page Count (1-10):</label>
+          <input type="number" id="prof-pages" min="1" max="10" value="10">
+        </div>
+        <div class="row">
+          <label for="prof-textmode">Default Text Mode:</label>
+          <select id="prof-textmode">
+            <option value="type">type (keystrokes)</option>
+            <option value="paste">paste (clipboard)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="page-name-input">Current Page Name:</label>
+          <input type="text" id="page-name-input" placeholder="Page Name">
+        </div>
+      </div>
+
+      <!-- Paths Editor Drawer -->
+      <div class="paths-drawer" id="paths-drawer">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:0.85rem;">Path Variables (${name})</strong>
+          <button id="btn-add-path" style="padding:2px 6px; font-size:0.75rem;">+ Add Path</button>
+        </div>
+        <div class="paths-list" id="paths-list"></div>
+      </div>
+    </div>
+
+    <!-- Right column: Single Key Editor Panel -->
+    <div class="editor-panel" id="editor-panel">
+      <div class="panel-header">
+        <h2 id="btn-editor-title">Button 0 (Page 1)</h2>
+        <div style="display:flex; gap:6px;">
+          <button id="btn-clear-key" class="danger" title="Clear this button's label and steps">Clear Key</button>
+        </div>
+      </div>
+
+      <!-- Quick Picks -->
+      <div class="quick-picks-bar">
+        <div class="quick-picks-title">Quick Picks</div>
+        <div class="quick-picks-buttons">
+          <button class="quick-btn" id="qp-app">🚀 App</button>
+          <button class="quick-btn" id="qp-website">🌐 Website</button>
+          <button class="quick-btn" id="qp-record">🔴 Record Shortcut</button>
+          <button class="quick-btn" id="qp-text">💬 Text</button>
+          <button class="quick-btn" id="qp-script">📜 Script (.ps1/.bat)</button>
+          <button class="quick-btn" id="qp-folder">📁 Folder</button>
+          <button class="quick-btn" id="qp-project">📦 Path Var</button>
+          <button class="quick-btn" id="qp-nav">↩ Go To Page</button>
+        </div>
+      </div>
+
+      <!-- Shortcut recorder overlay -->
+      <div class="shortcut-recorder" id="shortcut-recorder">
+        <div>Press key combination on your keyboard...</div>
+        <div class="recorder-keys" id="recorded-combo-disp">Press keys</div>
+        <div style="display:flex; gap:8px;">
+          <button class="primary" id="btn-apply-recorded">Apply Shortcut</button>
+          <button id="btn-cancel-recorded">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Button fields -->
+      <div class="btn-fields">
+        <div class="field-group">
+          <label for="btn-label-input">Label (up to ~12 chars):</label>
+          <input type="text" id="btn-label-input" placeholder="e.g. Run Script">
+        </div>
+        <div class="field-group">
+          <label for="btn-color-input">Color (optional hex):</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input type="text" id="btn-color-input" placeholder="#1F4E8C" style="flex:1;">
+            <input type="color" id="btn-color-picker" style="width:32px; height:28px; padding:0; border:none; cursor:pointer;" value="#1F4E8C">
+          </div>
+        </div>
+        <div class="field-group">
+          <label for="btn-textmode-select">Text Mode:</label>
+          <select id="btn-textmode-select">
+            <option value="">(Inherit default)</option>
+            <option value="type">type (SendString)</option>
+            <option value="paste">paste (Clipboard)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Steps list -->
+      <div class="steps-section">
+        <div class="steps-header">
+          <span>Steps Sequence</span>
+          <button id="btn-add-step" style="padding:3px 8px; font-size:0.75rem;">+ Add Step</button>
+        </div>
+        <div class="step-list" id="step-list"></div>
+      </div>
+
+      <!-- AI Box Section (shared with A2 builder via lib/ai-assist.js) -->
+      <div class="ai-box">
+        <div class="ai-header">
+          <h3>✨ AI Key Assist</h3>
+          <span class="ai-settings-toggle" id="ai-toggle-settings">Endpoint Settings</span>
+        </div>
+        <div class="ai-body">
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="ai-prompt-input" placeholder="Describe the key (e.g. 'Open Cursor and focus terminal')" style="flex:1;">
+            <button id="btn-ai-build-prompt">Build Prompt</button>
+            <button class="primary" id="btn-ai-ask" disabled>Ask</button>
+          </div>
+          <div class="ai-settings-pane" id="ai-settings-pane">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label><input type="checkbox" id="ai-enabled"> Enable local endpoint</label>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label style="width:70px;">URL:</label>
+              <input type="text" id="ai-endpoint" value="http://localhost:8000/v3/chat/completions" style="flex:1;">
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label style="width:70px;">Model:</label>
+              <input type="text" id="ai-model" value="qwen3-8b" style="flex:1;">
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label style="width:70px;">Format:</label>
+              <select id="ai-format" style="flex:1;">
+                <option value="auto">Auto detect</option>
+                <option value="openai">OpenAI compatible</option>
+                <option value="ollama">Ollama</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <textarea id="ai-prompt-area" rows="2" placeholder="Generated prompt (copy into chat if endpoint is off)" style="flex:1;"></textarea>
+            <textarea id="ai-answer-area" rows="2" placeholder="Paste YAML answer here or wait for endpoint response" style="flex:1;"></textarea>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div id="ai-status" class="ai-status"></div>
+            <button class="primary" id="btn-ai-apply" style="margin-left:auto;">Apply to Key</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">Saved</div>
+  <input type="file" id="file-input-hidden" accept=".yaml,.yml" style="display:none;">
+
+  <script>
+    (function () {
+      "use strict";
+
+      const PAGE_COLORS = [
+        "#2D3A4A", "#1F4E8C", "#3C3C8C", "#1E5E3A", "#7A4A12",
+        "#6B1F4E", "#4A5A1E", "#2A5A6A", "#5A2A2A", "#444444"
+      ];
+      const STEP_TYPES = ["key", "text", "wait", "url", "open", "run", "go_to_page"];
+      const SECRET_PATTERNS = [
+        /\bsk-[a-zA-Z0-9_-]{16,}\b/,
+        /\bgsk_[a-zA-Z0-9]{20,}\b/,
+        /\bgithub_pat_[a-zA-Z0-9_]{20,}\b/,
+        /\bhf_[a-zA-Z0-9]{20,}\b/,
+        /\bAKIA[0-9A-Z]{16}\b/,
+        /\bghp_[a-zA-Z0-9]{20,}\b/,
+        /\bAIza[0-9A-Za-z_-]{30,}\b/,
+        /\bxox[baprs]-[0-9a-zA-Z-]{10,}\b/,
+        /password\s*[:=]\s*\S+/i,
+        /api[_-]?key\s*[:=]\s*\S+/i
+      ];
+
+      // Default layout state
+      let fileHandle = null;
+      let activePageIndex = 0; // 0-based
+      let activeButtonIndex = 0; // 0-8
+      let model = {
+        profile_name: "MX 10-Page Layout",
+        profile_page_count: 10,
+        text_mode: "type",
+        paths: {},
+        pages: []
+      };
+
+      // AI Settings (persisted in localStorage)
+      const AI_KEY = "logi-cool-j-v2-ai-settings";
+      let aiConfig = {
+        enabled: false,
+        endpoint: "http://localhost:8000/v3/chat/completions",
+        model: "qwen3-8b",
+        format: "auto"
+      };
+
+      function loadAiSettings() {
+        try {
+          const s = localStorage.getItem(AI_KEY);
+          if (s) Object.assign(aiConfig, JSON.parse(s));
+        } catch (_) {}
+      }
+      function saveAiSettings() {
+        try { localStorage.setItem(AI_KEY, JSON.stringify(aiConfig)); } catch (_) {}
+      }
+
+      function initEmptyModel() {
+        model.pages = [];
+        for (let p = 1; p <= model.profile_page_count; p++) {
+          const page = {
+            name: p === 1 ? "AI Scripts" : p === 2 ? "Home" : "Page " + p,
+            buttons: Array.from({ length: 9 }, (_, id) => ({
+              id,
+              label: "",
+              color: "",
+              text_mode: "",
+              steps: []
+            }))
+          };
+          model.pages.push(page);
+        }
+      }
+
+      function toast(msg) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        setTimeout(() => t.classList.remove("show"), 2600);
+      }
+
+      // Check credentials
+      function hasSecret(val) {
+        if (!val) return false;
+        const str = String(val);
+        return SECRET_PATTERNS.some(rx => rx.test(str));
+      }
+
+      function validateLayout() {
+        const problems = [];
+        if (!model.profile_name) problems.push("Layout name is required.");
+        const pc = Number(model.profile_page_count);
+        if (!Number.isInteger(pc) || pc < 1 || pc > 10) problems.push("Page count must be 1 to 10.");
+
+        for (const [k, v] of Object.entries(model.paths || {})) {
+          if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) problems.push(`Path variable '${k}' has an invalid name.`);
+          if (hasSecret(v)) problems.push(`Path variable '${k}' looks like a secret / password.`);
+        }
+
+        model.pages.forEach((page, pi) => {
+          page.buttons.forEach((btn, bi) => {
+            const where = `Page ${pi + 1} Key ${bi}`;
+            if (btn.color && !/^#[0-9A-Fa-f]{6}$/.test(btn.color)) problems.push(`${where}: color must look like #1F4E8C.`);
+            (btn.steps || []).forEach((st, si) => {
+              if (hasSecret(st.value)) problems.push(`${where} Step ${si + 1}: looks like an API key or password.`);
+              if (st.type === "go_to_page") {
+                const target = Number(st.value);
+                if (!Number.isInteger(target) || target < 1 || target > model.profile_page_count) {
+                  problems.push(`${where}: go_to_page ${target} is out of range 1..${model.profile_page_count}.`);
+                }
+                if (btn.steps.length > 1) {
+                  problems.push(`${where}: go_to_page must be the button's only step.`);
+                }
+              }
+              if (st.type === "wait") {
+                const w = Number(st.value);
+                if (!Number.isInteger(w) || w < 0) problems.push(`${where}: wait must be 0 or more.`);
+              }
+            });
+          });
+        });
+        return problems;
+      }
+
+      function exportToYaml() {
+        const out = {
+          profile_name: model.profile_name || "MX 10-Page Layout",
+          profile_page_count: Number(model.profile_page_count) || 10,
+          text_mode: model.text_mode || "type"
+        };
+        if (model.paths && Object.keys(model.paths).length > 0) {
+          out.paths = { ...model.paths };
+        }
+        model.pages.slice(0, out.profile_page_count).forEach((pg, pi) => {
+          const pageObj = { name: pg.name || ("Page " + (pi + 1)), buttons: [] };
+          pg.buttons.forEach((b, bi) => {
+            if (!b.steps || b.steps.length === 0) return;
+            const bEntry = { id: bi, label: b.label || "" };
+            if (b.color) bEntry.color = b.color;
+            if (b.text_mode) bEntry.text_mode = b.text_mode;
+            bEntry.steps = b.steps.map(s => {
+              const v = (s.type === "wait" || s.type === "go_to_page") ? Number(s.value) : String(s.value);
+              return { [s.type]: v };
+            });
+            pageObj.buttons.push(bEntry);
+          });
+          out["page_" + (pi + 1)] = pageObj;
+        });
+        return jsyaml.dump(out, { lineWidth: -1, noRefs: true, quotingType: '"', forceQuotes: true });
+      }
+
+      function loadFromYaml(yamlText) {
+        const doc = jsyaml.load(yamlText);
+        if (!doc || typeof doc !== "object") throw new Error("Invalid YAML structure");
+        model.profile_name = doc.profile_name || "MX 10-Page Layout";
+        model.profile_page_count = Number(doc.profile_page_count) || 10;
+        model.text_mode = doc.text_mode || "type";
+        model.paths = (doc.paths && typeof doc.paths === "object") ? { ...doc.paths } : {};
+        model.pages = [];
+
+        for (let p = 1; p <= model.profile_page_count; p++) {
+          const pSrc = doc["page_" + p] || { name: "Page " + p, buttons: [] };
+          const page = {
+            name: pSrc.name || ("Page " + p),
+            buttons: Array.from({ length: 9 }, (_, id) => ({
+              id, label: "", color: "", text_mode: "", steps: []
+            }))
+          };
+          (pSrc.buttons || []).forEach(b => {
+            const id = Number(b.id);
+            if (Number.isInteger(id) && id >= 0 && id <= 8) {
+              const btn = page.buttons[id];
+              btn.label = b.label || "";
+              btn.color = b.color || "";
+              btn.text_mode = b.text_mode || "";
+              btn.steps = (b.steps || []).map(s => {
+                if (!s || typeof s !== "object") return null;
+                const k = Object.keys(s)[0];
+                return STEP_TYPES.includes(k) ? { type: k, value: String(s[k]) } : null;
+              }).filter(Boolean);
+            }
+          });
+          model.pages.push(page);
+        }
+        if (activePageIndex >= model.pages.length) activePageIndex = 0;
+        renderAll();
+      }
+
+      // UI Rendering
+      function renderAll() {
+        document.getElementById("prof-name").value = model.profile_name;
+        document.getElementById("prof-pages").value = model.profile_page_count;
+        document.getElementById("prof-textmode").value = model.text_mode;
+        document.getElementById("paths-count").textContent = Object.keys(model.paths || {}).length;
+
+        renderTabs();
+        renderGrid();
+        renderKeyEditor();
+        renderPathsList();
+      }
+
+      function renderTabs() {
+        const tabs = document.getElementById("page-tabs");
+        tabs.innerHTML = "";
+        const max = Math.min(model.profile_page_count, model.pages.length);
+        for (let i = 0; i < max; i++) {
+          const tab = document.createElement("button");
+          tab.className = "page-tab" + (i === activePageIndex ? " active" : "");
+          tab.textContent = `${i + 1}: ${model.pages[i].name || ("P" + (i + 1))}`;
+          tab.onclick = () => { activePageIndex = i; renderAll(); };
+          tabs.appendChild(tab);
+        }
+        const curPage = model.pages[activePageIndex];
+        if (curPage) {
+          document.getElementById("page-name-input").value = curPage.name || "";
+        }
+      }
+
+      function renderGrid() {
+        const grid = document.getElementById("key-grid");
+        grid.innerHTML = "";
+        const curPage = model.pages[activePageIndex];
+        if (!curPage) return;
+
+        curPage.buttons.forEach((btn, idx) => {
+          const cell = document.createElement("div");
+          const isEmpty = !btn.steps || btn.steps.length === 0;
+          cell.className = "key-cell" + (idx === activeButtonIndex ? " selected" : "") + (isEmpty ? " empty" : "");
+          cell.setAttribute("data-key-index", idx);
+
+          const defaultColor = PAGE_COLORS[activePageIndex % PAGE_COLORS.length];
+          const color = btn.color || (isEmpty ? "#12161f" : defaultColor);
+          if (!isEmpty) cell.style.backgroundColor = color;
+
+          const keyNum = document.createElement("span");
+          keyNum.className = "key-id";
+          keyNum.textContent = idx;
+          cell.appendChild(keyNum);
+
+          const lbl = document.createElement("div");
+          lbl.className = "key-label";
+          lbl.textContent = btn.label || (isEmpty ? `Empty #${idx}` : "");
+          cell.appendChild(lbl);
+
+          if (!isEmpty) {
+            const sum = document.createElement("div");
+            sum.className = "key-summary";
+            const first = btn.steps[0];
+            sum.textContent = first ? `${first.type}: ${first.value}` : "";
+            cell.appendChild(sum);
+          }
+
+          cell.onclick = () => {
+            activeButtonIndex = idx;
+            renderGrid();
+            renderKeyEditor();
+          };
+          grid.appendChild(cell);
+        });
+      }
+
+      function renderKeyEditor() {
+        const curPage = model.pages[activePageIndex];
+        if (!curPage) return;
+        const btn = curPage.buttons[activeButtonIndex];
+        if (!btn) return;
+
+        document.getElementById("btn-editor-title").textContent = `Key ${activeButtonIndex} (Page ${activePageIndex + 1}: ${curPage.name})`;
+        document.getElementById("btn-label-input").value = btn.label || "";
+        document.getElementById("btn-color-input").value = btn.color || "";
+        document.getElementById("btn-color-picker").value = btn.color && /^#[0-9A-Fa-f]{6}$/.test(btn.color) ? btn.color : (PAGE_COLORS[activePageIndex % 10] || "#1F4E8C");
+        document.getElementById("btn-textmode-select").value = btn.text_mode || "";
+
+        renderSteps(btn);
+      }
+
+      function renderSteps(btn) {
+        const list = document.getElementById("step-list");
+        list.innerHTML = "";
+        if (!btn.steps || btn.steps.length === 0) {
+          list.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); padding:8px;">No steps assigned. Click a Quick Pick above or + Add Step.</div>`;
+          return;
+        }
+
+        btn.steps.forEach((step, idx) => {
+          const row = document.createElement("div");
+          row.className = "step-row";
+
+          const sel = document.createElement("select");
+          STEP_TYPES.forEach(t => {
+            const opt = document.createElement("option");
+            opt.value = t;
+            opt.textContent = t;
+            if (t === step.type) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          sel.onchange = (e) => {
+            step.type = e.target.value;
+            renderGrid();
+          };
+
+          const inp = document.createElement("input");
+          inp.type = "text";
+          inp.value = step.value;
+          inp.placeholder = "Step value";
+          inp.oninput = (e) => {
+            step.value = e.target.value;
+            renderGrid();
+          };
+
+          const acts = document.createElement("div");
+          acts.className = "step-actions";
+
+          if (idx > 0) {
+            const up = document.createElement("button");
+            up.textContent = "↑";
+            up.title = "Move Up";
+            up.onclick = () => {
+              const tmp = btn.steps[idx - 1];
+              btn.steps[idx - 1] = btn.steps[idx];
+              btn.steps[idx] = tmp;
+              renderSteps(btn);
+              renderGrid();
+            };
+            acts.appendChild(up);
+          }
+
+          if (idx < btn.steps.length - 1) {
+            const dn = document.createElement("button");
+            dn.textContent = "↓";
+            dn.title = "Move Down";
+            dn.onclick = () => {
+              const tmp = btn.steps[idx + 1];
+              btn.steps[idx + 1] = btn.steps[idx];
+              btn.steps[idx] = tmp;
+              renderSteps(btn);
+              renderGrid();
+            };
+            acts.appendChild(dn);
+          }
+
+          const del = document.createElement("button");
+          del.textContent = "✕";
+          del.className = "danger";
+          del.title = "Delete Step";
+          del.onclick = () => {
+            btn.steps.splice(idx, 1);
+            renderSteps(btn);
+            renderGrid();
+          };
+          acts.appendChild(del);
+
+          row.appendChild(sel);
+          row.appendChild(inp);
+          row.appendChild(acts);
+          list.appendChild(row);
+        });
+      }
+
+      function renderPathsList() {
+        const list = document.getElementById("paths-list");
+        list.innerHTML = "";
+        const entries = Object.entries(model.paths || {});
+        if (entries.length === 0) {
+          list.innerHTML = `<div style="font-size:0.75rem; color:var(--text-muted);">No paths defined.</div>`;
+          return;
+        }
+        entries.forEach(([name, val]) => {
+          const row = document.createElement("div");
+          row.className = "path-row";
+
+          const nInp = document.createElement("input");
+          nInp.value = name;
+          nInp.placeholder = "name";
+
+          const vInp = document.createElement("input");
+          vInp.value = val;
+          vInp.placeholder = "Path or ${other}";
+
+          const del = document.createElement("button");
+          del.textContent = "✕";
+          del.className = "danger";
+          del.style.padding = "2px 6px";
+          del.onclick = () => {
+            delete model.paths[name];
+            renderAll();
+          };
+
+          nInp.onchange = (e) => {
+            const newName = e.target.value.trim();
+            if (newName && newName !== name) {
+              const curVal = model.paths[name];
+              delete model.paths[name];
+              model.paths[newName] = curVal;
+              renderAll();
+            }
+          };
+          vInp.onchange = (e) => {
+            model.paths[name] = e.target.value.trim();
+          };
+
+          row.appendChild(nInp);
+          row.appendChild(vInp);
+          row.appendChild(del);
+          list.appendChild(row);
+        });
+      }
+
+      // Shortcut recording
+      let isRecording = false;
+      let recordedCombo = null;
+
+      function startRecorder() {
+        isRecording = true;
+        recordedCombo = null;
+        document.getElementById("shortcut-recorder").classList.add("active");
+        document.getElementById("recorded-combo-disp").textContent = "Press keys...";
+      }
+
+      function stopRecorder() {
+        isRecording = false;
+        document.getElementById("shortcut-recorder").classList.remove("active");
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (!isRecording) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (e.key === "Escape") {
+          stopRecorder();
+          return;
+        }
+
+        const mods = [];
+        if (e.ctrlKey) mods.push("Ctrl");
+        if (e.shiftKey) mods.push("Shift");
+        if (e.altKey) mods.push("Alt");
+        if (e.metaKey) mods.push("Win");
+
+        // Ignore modifier-only presses
+        if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) {
+          document.getElementById("recorded-combo-disp").textContent = mods.join("+") + "...";
+          return;
+        }
+
+        let mainKey = e.key;
+        if (mainKey === " ") mainKey = "Space";
+        else if (mainKey === "ArrowLeft") mainKey = "Left";
+        else if (mainKey === "ArrowRight") mainKey = "Right";
+        else if (mainKey === "ArrowUp") mainKey = "Up";
+        else if (mainKey === "ArrowDown") mainKey = "Down";
+        else if (mainKey.length === 1) mainKey = mainKey.toUpperCase();
+
+        recordedCombo = mods.length ? `${mods.join("+")}+${mainKey}` : mainKey;
+        document.getElementById("recorded-combo-disp").textContent = recordedCombo;
+      }, true);
+
+      // Event Listeners for UI controls
+      document.getElementById("btn-apply-recorded").onclick = () => {
+        if (recordedCombo) {
+          const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+          btn.steps.push({ type: "key", value: recordedCombo });
+          if (!btn.label) btn.label = recordedCombo;
+          renderGrid();
+          renderKeyEditor();
+        }
+        stopRecorder();
+      };
+      document.getElementById("btn-cancel-recorded").onclick = stopRecorder;
+
+      // Quick picks
+      document.getElementById("qp-app").onclick = () => {
+        const p = prompt("Path to program (with args) or Windows command:", "wt.exe");
+        if (p !== null) {
+          const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+          btn.steps.push({ type: "open", value: p });
+          if (!btn.label) btn.label = p.split("\\").pop().replace(/\.exe$/i, "");
+          renderGrid(); renderKeyEditor();
+        }
+      };
+
+      document.getElementById("qp-website").onclick = () => {
+        const u = prompt("Website URL:", "https://");
+        if (u !== null) {
+          const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+          btn.steps.push({ type: "url", value: u });
+          if (!btn.label) {
+            try { btn.label = new URL(u).hostname.replace(/^www\./, ""); } catch (_) { btn.label = "Web"; }
+          }
+          renderGrid(); renderKeyEditor();
+        }
+      };
+
+      document.getElementById("qp-record").onclick = startRecorder;
+
+      document.getElementById("qp-text").onclick = () => {
+        const t = prompt("Text to type or paste:", "");
+        if (t !== null) {
+          const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+          btn.steps.push({ type: "text", value: t });
+          if (!btn.label) btn.label = t.slice(0, 10);
+          renderGrid(); renderKeyEditor();
+        }
+      };
+
+      document.getElementById("qp-script").onclick = () => {
+        const s = prompt("Script file path (.ps1 or .bat):", "${ai_scripts}\\AiScript.ps1");
+        if (s !== null) {
+          const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+          btn.steps.push({ type: "run", value: s });
+          if (!btn.label) btn.label = s.split("\\").pop();
+          renderGrid(); renderKeyEditor();
+        }
+      };
+
+      document.getElementById("qp-folder").onclick = () => {
+        const f = prompt("Folder path to open:", "${templar}");
+        if (f !== null) {
+          const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+          btn.steps.push({ type: "open", value: f });
+          if (!btn.label) btn.label = f.split("\\").pop() || "Folder";
+          renderGrid(); renderKeyEditor();
+        }
+      };
+
+      document.getElementById("qp-project").onclick = () => {
+        const keys = Object.keys(model.paths || {});
+        if (!keys.length) {
+          alert("No path variables defined yet. Click 'Paths' in the header to add some.");
+          return;
+        }
+        const pick = prompt("Choose a path variable to open (${name}):\n\n" + keys.map(k => `${k} -> ${model.paths[k]}`).join("\n"), keys[0]);
+        if (pick && model.paths[pick]) {
+          const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+          btn.steps.push({ type: "open", value: `\${${pick}}` });
+          if (!btn.label) btn.label = pick;
+          renderGrid(); renderKeyEditor();
+        }
+      };
+
+      document.getElementById("qp-nav").onclick = () => {
+        const p = prompt(`Go to page (1..${model.profile_page_count}):`, "1");
+        if (p !== null) {
+          const target = Number(p);
+          if (Number.isInteger(target) && target >= 1 && target <= model.profile_page_count) {
+            const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+            btn.steps = [{ type: "go_to_page", value: target }];
+            if (!btn.label) btn.label = target === 1 ? "Home" : "Page " + target;
+            renderGrid(); renderKeyEditor();
+          } else {
+            alert("Invalid page number.");
+          }
+        }
+      };
+
+      // Button inputs
+      document.getElementById("btn-label-input").oninput = (e) => {
+        const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+        btn.label = e.target.value;
+        renderGrid();
+      };
+      document.getElementById("btn-color-input").oninput = (e) => {
+        const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+        btn.color = e.target.value.trim();
+        renderGrid();
+      };
+      document.getElementById("btn-color-picker").oninput = (e) => {
+        const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+        btn.color = e.target.value;
+        document.getElementById("btn-color-input").value = btn.color;
+        renderGrid();
+      };
+      document.getElementById("btn-textmode-select").onchange = (e) => {
+        const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+        btn.text_mode = e.target.value;
+      };
+      document.getElementById("btn-clear-key").onclick = () => {
+        const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+        btn.label = "";
+        btn.color = "";
+        btn.text_mode = "";
+        btn.steps = [];
+        renderGrid();
+        renderKeyEditor();
+      };
+      document.getElementById("btn-add-step").onclick = () => {
+        const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+        btn.steps.push({ type: "key", value: "Return" });
+        renderGrid();
+        renderSteps(btn);
+      };
+
+      // Page name change
+      document.getElementById("page-name-input").oninput = (e) => {
+        const curPage = model.pages[activePageIndex];
+        if (curPage) {
+          curPage.name = e.target.value;
+          renderTabs();
+        }
+      };
+
+      // Profile settings
+      document.getElementById("prof-name").oninput = (e) => { model.profile_name = e.target.value; };
+      document.getElementById("prof-pages").onchange = (e) => {
+        const count = Math.clamp(Number(e.target.value) || 10, 1, 10);
+        model.profile_page_count = count;
+        while (model.pages.length < count) {
+          const num = model.pages.length + 1;
+          model.pages.push({
+            name: "Page " + num,
+            buttons: Array.from({ length: 9 }, (_, id) => ({ id, label: "", color: "", text_mode: "", steps: [] }))
+          });
+        }
+        if (activePageIndex >= count) activePageIndex = count - 1;
+        renderAll();
+      };
+      document.getElementById("prof-textmode").onchange = (e) => { model.text_mode = e.target.value; };
+
+      // Paths toggle & add
+      document.getElementById("btn-toggle-paths").onclick = () => {
+        document.getElementById("paths-drawer").classList.toggle("open");
+      };
+      document.getElementById("btn-add-path").onclick = () => {
+        const k = prompt("New path variable name:", "my_path");
+        if (k && /^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) {
+          if (!model.paths) model.paths = {};
+          model.paths[k] = "C:\\";
+          renderAll();
+        }
+      };
+
+      // AI Assist implementation (matches A2 and lib/ai-assist.js)
+      function updateAiControls() {
+        document.getElementById("ai-enabled").checked = aiConfig.enabled;
+        document.getElementById("ai-endpoint").value = aiConfig.endpoint;
+        document.getElementById("ai-model").value = aiConfig.model;
+        document.getElementById("ai-format").value = aiConfig.format;
+        document.getElementById("btn-ai-ask").disabled = !aiConfig.enabled;
+      }
+
+      document.getElementById("ai-toggle-settings").onclick = () => {
+        document.getElementById("ai-settings-pane").classList.toggle("open");
+      };
+      document.getElementById("ai-enabled").onchange = (e) => {
+        aiConfig.enabled = e.target.checked;
+        saveAiSettings();
+        updateAiControls();
+      };
+      document.getElementById("ai-endpoint").oninput = (e) => {
+        aiConfig.endpoint = e.target.value.trim();
+        saveAiSettings();
+      };
+      document.getElementById("ai-model").oninput = (e) => {
+        aiConfig.model = e.target.value.trim();
+        saveAiSettings();
+      };
+      document.getElementById("ai-format").onchange = (e) => {
+        aiConfig.format = e.target.value;
+        saveAiSettings();
+      };
+
+      document.getElementById("btn-ai-build-prompt").onclick = () => {
+        const req = document.getElementById("ai-prompt-input").value.trim() || "A useful shortcut key";
+        const promptText = window.AiAssist.buttonPrompt(req, {
+          pageCount: model.profile_page_count,
+          paths: model.paths,
+          allowColor: true
+        });
+        document.getElementById("ai-prompt-area").value = promptText;
+        const status = document.getElementById("ai-status");
+        status.className = "ai-status info";
+        status.textContent = "Prompt built. Copy into chat, or click Ask if endpoint is on.";
+      };
+
+      document.getElementById("btn-ai-ask").onclick = async () => {
+        const promptText = document.getElementById("ai-prompt-area").value.trim() ||
+          window.AiAssist.buttonPrompt(document.getElementById("ai-prompt-input").value.trim() || "A key", {
+            pageCount: model.profile_page_count,
+            paths: model.paths,
+            allowColor: true
+          });
+        document.getElementById("ai-prompt-area").value = promptText;
+
+        const status = document.getElementById("ai-status");
+        status.className = "ai-status info";
+        status.textContent = "Asking endpoint...";
+
+        try {
+          const answer = await window.AiAssist.ask({
+            endpoint: aiConfig.endpoint,
+            model: aiConfig.model,
+            prompt: promptText,
+            format: aiConfig.format
+          });
+          document.getElementById("ai-answer-area").value = answer;
+          status.textContent = "Response received! Click 'Apply to Key'.";
+        } catch (err) {
+          status.className = "ai-status err";
+          status.textContent = String(err.message || err);
+        }
+      };
+
+      document.getElementById("btn-ai-apply").onclick = () => {
+        const raw = document.getElementById("ai-answer-area").value;
+        const status = document.getElementById("ai-status");
+        try {
+          const parsed = window.AiAssist.parseButton(raw, window.jsyaml);
+          if (parsed.steps.some(s => hasSecret(s.value))) {
+            throw new Error("Refused: the answer contains something that looks like an API key or password.");
+          }
+          const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
+          if (parsed.label) btn.label = parsed.label;
+          if (parsed.color) btn.color = parsed.color;
+          btn.steps = parsed.steps.map(s => ({ type: s.type, value: String(s.value) }));
+          renderGrid();
+          renderKeyEditor();
+          status.className = "ai-status info";
+          status.textContent = "Applied AI key successfully!";
+          toast("Applied to key #" + activeButtonIndex);
+        } catch (err) {
+          status.className = "ai-status err";
+          status.textContent = err.message;
+        }
+      };
+
+      // File I/O: Open, Save, Download
+      document.getElementById("btn-open-file").onclick = async () => {
+        if (window.showOpenFilePicker) {
+          try {
+            const [handle] = await window.showOpenFilePicker({
+              types: [{ description: "YAML Keypad layout", accept: { "text/yaml": [".yaml", ".yml"] } }]
+            });
+            fileHandle = handle;
+            const file = await handle.getFile();
+            const text = await file.text();
+            loadFromYaml(text);
+            toast("Loaded " + handle.name);
+            return;
+          } catch (e) {
+            if (e && e.name === "AbortError") return;
+          }
+        }
+        document.getElementById("file-input-hidden").click();
+      };
+
+      document.getElementById("file-input-hidden").onchange = (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            loadFromYaml(ev.target.result);
+            toast("Loaded " + f.name);
+          } catch (err) {
+            alert("Error parsing YAML: " + err.message);
+          }
+        };
+        reader.readAsText(f);
+      };
+
+      async function saveToFile() {
+        const probs = validateLayout();
+        if (probs.length > 0) {
+          alert("Please fix these issues before saving:\n\n• " + probs.join("\n• "));
+          return;
+        }
+        const text = exportToYaml();
+
+        if (window.showSaveFilePicker) {
+          try {
+            if (!fileHandle) {
+              fileHandle = await window.showSaveFilePicker({
+                suggestedName: "keys.yaml",
+                types: [{ description: "YAML Layout", accept: { "text/yaml": [".yaml", ".yml"] } }]
+              });
+            }
+            const writable = await fileHandle.createWritable();
+            await writable.write(text);
+            await writable.close();
+            toast("Saved directly to " + fileHandle.name);
+            return;
+          } catch (e) {
+            if (e && e.name === "AbortError") return;
+            fileHandle = null;
+          }
+        }
+        downloadFile("keys.yaml", text);
+        toast("Downloaded keys.yaml");
+      }
+
+      function downloadFile(name, text) {
+        const blob = text instanceof Blob ? text : new Blob([text], { type: "text/yaml" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(a.href);
+        }, 1000);
+      }
+
+      document.getElementById("btn-save-file").onclick = saveToFile;
+      document.getElementById("btn-export-download").onclick = () => {
+        const probs = validateLayout();
+        if (probs.length > 0 && !confirm("Validation warnings:\n• " + probs.join("\n• ") + "\n\nDownload anyway?")) {
+          return;
+        }
+        downloadFile("keys.yaml", exportToYaml());
+      };
+
+      Math.clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+      // Startup
+      loadAiSettings();
+      updateAiControls();
+      initEmptyModel();
+      renderAll();
+
+      // Expose state for Playwright tests
+      window.__EDITOR = {
+        model,
+        loadFromYaml,
+        exportToYaml,
+        validateLayout,
+        renderAll,
+        setFileHandle: (h) => { fileHandle = h; }
+      };
+    })();
+  </script>
+</body>
+</html>
