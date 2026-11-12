@@ -108,9 +108,8 @@ page_2:
       label: "Ref Drafts"
       icon: "whistle"
       steps:
-        # Same command as the desktop shortcut. Switch to the portable build's
-        # .exe once Ref Drafts ships one (npm run package).
-        - open: "C:\\Templar Archives\\Basketball Bro\\Ref Text Confirm\\pc-only-ref-drafts\\node_modules\\electron\\dist\\electron.exe \"C:\\Templar Archives\\Basketball Bro\\Ref Text Confirm\\pc-only-ref-drafts\""
+        # The portable build (npm run package); no arguments needed.
+        - open: "C:\\Templar Archives\\Basketball Bro\\Ref Text Confirm\\pc-only-ref-drafts\\dist\\RefDrafts-win32-x64\\RefDrafts.exe"
     - id: 4
       label: "DeepSeek"
       icon: "deepseek"

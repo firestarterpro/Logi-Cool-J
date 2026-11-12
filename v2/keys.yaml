@@ -100,7 +100,7 @@ page_2:
       label: "Ref Drafts"
       icon: "whistle"
       steps:
-        - open: "${ref_drafts}\\node_modules\\electron\\dist\\electron.exe \"${ref_drafts}\""
+        - open: "${ref_drafts}\\dist\\RefDrafts-win32-x64\\RefDrafts.exe"
     - id: 4
       label: "DeepSeek"
       icon: "deepseek"
