@@ -139,7 +139,7 @@ python lp5-build\yaml2lp5.py v2\device-test.yaml v2\device-test.lp5
 
 ### Known gaps (Track B)
 
-- **Smart App Control** (enforce mode on this PC) blocked the unsigned xUnit test DLL, so the C# tests compile but have never run here. Whether the Plugin Service may load the plugin DLLs is device-only.
+- The C# tests pass (44 of 44, run 2026-11-12 after Smart App Control was turned off). Whether the Plugin Service may load the plugin DLLs is device-only.
 - Everything involving the Logi Plugin Service and Options+ (install, import, live labels, paging, typing) is untested until the owner's device pass.
 - No API exists to switch device pages from a plugin, which is why virtual paging is primary and the 10-page profile is the fallback.
 - Out of scope: the dialpad, direct USB/HID control, other Logitech devices, automatic re-import.
@@ -158,7 +158,7 @@ Browser tests (the builder and the v2 editor; `PYTHON=python` overrides the inte
 node tests\ui-smoke.js
 ```
 
-C# unit tests (blocked here by Smart App Control; run them on a machine without enforcement):
+C# unit tests (44 cases; they need Smart App Control off, or a machine without enforcement, because it blocks the unsigned test DLL):
 
 ```
 dotnet test v2\LogiCoolJ.sln -c Release
