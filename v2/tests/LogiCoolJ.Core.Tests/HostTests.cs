@@ -51,13 +51,19 @@ public sealed class HostTests : IDisposable
     {
         var path = Path.Combine(this._dir, "keys.yaml");
         File.WriteAllText(path, Good("Before"), new UTF8Encoding(false));
-        using var host = new LayoutHost(path, debounceMs: 100, pollMs: 300);
+        using var host = new LayoutHost(path, debounceMs: 80, pollMs: 120);
         host.Reload();
-        host.Start();
+        var spuriousCount = 0;
         var swapped = new TaskCompletionSource();
-        host.Changed += (_, e) => { if (e.LayoutSwapped && host.Current?.GetButton(1, 0)?.Label == "After") swapped.TrySetResult(); };
+        host.Changed += (_, e) =>
+        {
+            if (host.Current?.GetButton(1, 0)?.Label == "Before") spuriousCount++;
+            if (e.LayoutSwapped && host.Current?.GetButton(1, 0)?.Label == "After") swapped.TrySetResult();
+        };
+        host.Start();
 
-        await Task.Delay(150);
+        await Task.Delay(260); // past pollMs + debounceMs: Reload() seeded _lastStamp, so no spurious reload
+        Assert.Equal(0, spuriousCount);
         File.WriteAllText(path, Good("After"), new UTF8Encoding(false));
         var done = await Task.WhenAny(swapped.Task, Task.Delay(5000));
         Assert.Same(swapped.Task, done);

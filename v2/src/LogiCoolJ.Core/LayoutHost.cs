@@ -16,6 +16,7 @@ public sealed class LayoutChangedEventArgs : EventArgs
 public sealed class LayoutHost : IDisposable
 {
     private readonly object _gate = new();
+    private readonly object _reloadGate = new();
     private readonly int _debounceMs;
     private readonly int _pollMs;
     private FileSystemWatcher? _watcher;
@@ -47,8 +48,20 @@ public sealed class LayoutHost : IDisposable
     /// <summary>Parses text as the new file content. Swaps the layout only if it is valid.</summary>
     public LoadResult ApplyText(string text)
     {
-        var result = KeysLoader.Load(text);
+        LoadResult result;
         LayoutChangedEventArgs args;
+        lock (this._reloadGate)
+        {
+            (result, args) = this.ApplyTextCore(text);
+        }
+
+        this.Changed?.Invoke(this, args);
+        return result;
+    }
+
+    private (LoadResult Result, LayoutChangedEventArgs Args) ApplyTextCore(string text)
+    {
+        var result = KeysLoader.Load(text);
         lock (this._gate)
         {
             var oldError = this.Error;
@@ -62,49 +75,90 @@ public sealed class LayoutHost : IDisposable
             }
 
             var error = this.Error;
-            args = new LayoutChangedEventArgs
+            var args = new LayoutChangedEventArgs
             {
                 LayoutSwapped = swapped,
                 Error = error,
                 ErrorIsNew = error != null && (oldError == null || oldError.ToString() != error.ToString()),
             };
+            return (result, args);
         }
-
-        this.Changed?.Invoke(this, args);
-        return result;
     }
 
     /// <summary>Reads the file (retrying while an editor still holds it) and applies it.</summary>
-    public LoadResult Reload()
+    public LoadResult Reload() => this.ReloadCore(onlyIfChanged: false);
+
+    private LoadResult ReloadCore(bool onlyIfChanged)
     {
-        string text;
-        try
+        LayoutChangedEventArgs? notifyArgs = null;
+        LoadResult? result = null;
+        lock (this._reloadGate)
         {
-            text = ReadShared(this.FilePath);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            var missing = e is FileNotFoundException or DirectoryNotFoundException;
-            var problem = new LayoutProblem(0, null, null, missing ? $"{Path.GetFileName(this.FilePath)} not found at {Path.GetDirectoryName(this.FilePath)}" : $"cannot read {Path.GetFileName(this.FilePath)}: {e.Message}");
-            LayoutChangedEventArgs args;
-            lock (this._gate)
+            try
             {
-                var isNew = this.Error?.ToString() != problem.ToString();
-                this.Problems = new[] { problem };
-                this._lastText = null;
-                args = new LayoutChangedEventArgs { LayoutSwapped = false, Error = problem, ErrorIsNew = isNew };
-            }
+                var stamp = this.CurrentStamp();
+                if (onlyIfChanged && stamp.Length >= 0)
+                {
+                    var text = ReadShared(this.FilePath);
+                    lock (this._gate)
+                    {
+                        this._lastStamp = stamp;
+                        if (text == this._lastText)
+                        {
+                            return new LoadResult { Layout = this.Current, Problems = this.Problems };
+                        }
+                    }
 
-            this.Changed?.Invoke(this, args);
-            return new LoadResult { Layout = null, Problems = this.Problems };
+                    (result, notifyArgs) = this.ApplyTextCore(text);
+                }
+                else
+                {
+                    var text = ReadShared(this.FilePath);
+                    lock (this._gate)
+                    {
+                        this._lastStamp = this.CurrentStamp();
+                    }
+
+                    (result, notifyArgs) = this.ApplyTextCore(text);
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                var missing = e is FileNotFoundException or DirectoryNotFoundException;
+                if (onlyIfChanged && !missing)
+                {
+                    this.Kick(); // still being written: try again shortly
+                    return new LoadResult { Layout = this.Current, Problems = this.Problems };
+                }
+
+                var problem = new LayoutProblem(0, null, null, missing ? $"{Path.GetFileName(this.FilePath)} not found at {Path.GetDirectoryName(this.FilePath)}" : $"cannot read {Path.GetFileName(this.FilePath)}: {e.Message}");
+                lock (this._gate)
+                {
+                    var isNew = this.Error?.ToString() != problem.ToString();
+                    this.Problems = new[] { problem };
+                    this._lastText = null;
+                    this._lastStamp = (-1L, DateTime.MinValue);
+                    notifyArgs = new LayoutChangedEventArgs { LayoutSwapped = false, Error = problem, ErrorIsNew = isNew };
+                    result = new LoadResult { Layout = null, Problems = this.Problems };
+                }
+            }
         }
 
-        return this.ApplyText(text);
+        if (notifyArgs != null)
+        {
+            this.Changed?.Invoke(this, notifyArgs);
+        }
+
+        return result!;
     }
 
     /// <summary>Starts watching: a FileSystemWatcher plus a slow poll in case an event is missed.</summary>
     public void Start()
     {
+        this._watcher?.Dispose();
+        this._debounce?.Dispose();
+        this._poll?.Dispose();
+
         var dir = Path.GetDirectoryName(this.FilePath)!;
         this._debounce = new Timer(_ => this.ReloadIfChanged(), null, Timeout.Infinite, Timeout.Infinite);
         if (Directory.Exists(dir))
@@ -136,9 +190,14 @@ public sealed class LayoutHost : IDisposable
     {
         try
         {
-            var fi = new FileInfo(this.FilePath);
-            var stamp = fi.Exists ? (fi.Length, fi.LastWriteTimeUtc) : (-1L, DateTime.MinValue);
-            if (stamp != this._lastStamp)
+            var stamp = this.CurrentStamp();
+            (long Length, DateTime Written) last;
+            lock (this._gate)
+            {
+                last = this._lastStamp;
+            }
+
+            if (stamp != last)
             {
                 this.Kick();
             }
@@ -155,26 +214,13 @@ public sealed class LayoutHost : IDisposable
             return;
         }
 
-        try
-        {
-            var fi = new FileInfo(this.FilePath);
-            this._lastStamp = fi.Exists ? (fi.Length, fi.LastWriteTimeUtc) : (-1L, DateTime.MinValue);
-            if (fi.Exists)
-            {
-                var text = ReadShared(this.FilePath);
-                if (text == this._lastText)
-                {
-                    return; // touched but not changed
-                }
-            }
-        }
-        catch (IOException)
-        {
-            this.Kick(); // still being written: try again shortly
-            return;
-        }
+        this.ReloadCore(onlyIfChanged: true);
+    }
 
-        this.Reload();
+    private (long Length, DateTime Written) CurrentStamp()
+    {
+        var fi = new FileInfo(this.FilePath);
+        return fi.Exists ? (fi.Length, fi.LastWriteTimeUtc) : (-1L, DateTime.MinValue);
     }
 
     private static string ReadShared(string path)
