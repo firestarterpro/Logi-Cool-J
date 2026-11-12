@@ -76,6 +76,7 @@ Three small units after the owner began testing by hand; one commit each, nothin
 12. B5: nine keys cannot hold every step type separately, so arrows share one macro with text (self-checking in Notepad), Media is one key that presses PlayPause twice, and `wait` and `text` share key 4. `go_to_page 1` on a one-page profile is the page-switch check.
 13. B5: Notepad is the observation surface; nothing on that page is destructive, uses secrets or leaves this folder.
 14. Commits for B5 and Finish use the Sonnet 5.5 co-author trailer.
+15. Independent review fixes: `LaunchStep.EnsureTargetExists()` validates rooted targets and `-File "<script.ps1>"` arguments before `Process.Start` so missing `.ps1` files report through `StepRunner.Failed` without changing the `LaunchStep` record shape; `v2\editor\keys-editor.html` preserves `icon`, `profile_id` and `dials` on YAML round-trip and enforces the same step/path validation rules as `KeysLoader`.
 
 ## Known issues
 - `AiScript.ps1` is on GitHub main but the local `stacks-attacks` clone had not pulled it: run `stacks-attacks-pull.bat` before testing the AI Scripts keys.
@@ -112,3 +113,19 @@ The first lists commits; the second restores one file from the v1 baseline; the 
 13. **Does typed text work in the browser and in Cursor?** Press a `text` key in each. No: set `text_mode: paste` in `keys.yaml` (top level or per key) and save.
 14. **Can a key switch pages?** Press an Index jump key. No: import `slots-10pages.lp5` (native page changes) or use the plugin's `PageCommand` keys.
 15. Optional plugin route for the device test: put `t0..t8` on a profile and compare with step 8; a key that works natively but not here means the plugin's key name needs fixing (backtick is `Oem3` there).
+
+## Independent review
+Reviewed `be180f8..e02b563` on `master` against the Logi Actions SDK (`PluginApi.dll` 6.1.4), `CLAUDE_CODE_FINISH.md`, and `lp5-build\HANDOUT-keypad-addon.md` (full report in `REVIEW_FINDINGS.md`, committed at `29bca4a`).
+
+### What was found and fixed
+- **Finding 1 (Medium, fixed in `13ad740`):** `v2\editor\keys-editor.html` (`validateLayout`, `loadFromYaml`, `exportToYaml`, `#btn-export-download`) did not check for empty step values, empty/undefined/cyclic `${name}` path variables, unknown `key` modifiers, `wait > 600000`, or secrets formed after `${name}` expansion, allowed downloading invalid layouts, and dropped button `icon` fields as well as top-level `profile_id` and `dials` on save. Fixed in `v2\editor\keys-editor.html` and verified in `tests\test-keys-editor.js`.
+- **Finding 2 (Medium, fixed in `f5ac914`):** `v2\src\LogiCoolJ.Core\LayoutHost.cs` (`ReloadIfChanged`, `Reload`, `ApplyText`, `PollOnce`, `Start`) read `keys.yaml` twice per watcher event, did not seed `_lastStamp` on direct `Reload()` calls (causing the first poll tick after `Reload()` + `Start()` to trigger a redundant reload), and did not serialize concurrent `Reload()` / `ApplyText()` swaps. Fixed in `LayoutHost.cs` and verified in `v2\tests\LogiCoolJ.Core.Tests\HostTests.cs`.
+- **Finding 3 (Medium, fixed in `c0517f5`):** `v2\src\LogiCoolJPlugin\Runtime\PluginStepSink.cs` (`Launch`) and `v2\src\LogiCoolJ.Core\Steps.cs` (`LaunchStep`) started `pwsh.exe` directly for `.ps1` targets without checking whether the `.ps1` script path existed on disk, so a missing `.ps1` flashed `pwsh.exe` and exited without raising `StepRunner.Failed`. Added `LaunchStep.EnsureTargetExists()` (called in `PluginStepSink.Launch`) and verified in `v2\tests\LogiCoolJ.Core.Tests\PlanningTests.cs`.
+
+### Left as notes (Low)
+- **Finding 4 (Low):** `lib\ai-assist.js:113-128` (`parseButton`) leaves `color` hex format and `key` modifier checks to layout-level validation at save time.
+- **Finding 5 (Low):** `lp5-build\yaml2lp5.py:184-192` (`check_layout`) checks `wait >= 0` without the `600000` ms upper bound enforced by `KeysLoader.MaxWaitMs`.
+
+### Verification and what can only be confirmed on the console
+- Ran at every commit: `python -m unittest discover -s tests` (**40/40 passed**), `node tests\ui-smoke.js` (**65/65 passed**: 50 Track A + 15 Track B), `dotnet build v2\LogiCoolJ.sln -c Release` (**0 warnings, 0 errors**, plus both `SlotForm=Parameters` and `SlotForm=Actions`), and `dotnet test v2\LogiCoolJ.sln -c Release` (**44/44 passed**). Layout output did not change (`lp5-build\keypad-layout.yaml` and `v2\keys.yaml` were unchanged).
+- **Console-only (not run per hard limits):** `v2\Install-Plugin.ps1`, `-p:LinkToPluginService=true`, `logiplugintool install`, and Logi Options+ profile imports were never executed. Whether Options+ binds parameterized `SlotCommand` actions from `slots.lp5` (or needs `slots-actions.lp5` / `slots-10pages.lp5`), whether `SendString` vs clipboard paste works best per target app, and whether the unconfirmed native key names (`ArrowLeft/Right/Up/Down`, `Backquote`, `MediaPlayPause`, `VolumeMute`) fire on hardware must be confirmed on the MX Creative Console using the 15-step checklist above.
