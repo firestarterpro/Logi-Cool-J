@@ -64,6 +64,7 @@ namespace Loupedeck.LogiCoolJPlugin
 
         public void Launch(LaunchStep step)
         {
+            step.EnsureTargetExists();
             var psi = new ProcessStartInfo
             {
                 FileName = step.Target,

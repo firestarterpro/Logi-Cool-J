@@ -24,7 +24,37 @@ public enum LaunchKind
     Shell,
 }
 
-public sealed record LaunchStep(LaunchKind Kind, string Target, string Arguments, string WorkingDirectory) : PlannedStep;
+public sealed record LaunchStep(LaunchKind Kind, string Target, string Arguments, string WorkingDirectory) : PlannedStep
+{
+    private static readonly Regex FileArg = new(@"(?:^|\s)-File\s+""([^""]+)""", RegexOptions.IgnoreCase);
+
+    /// <summary>Throws <see cref="FileNotFoundException"/> when a rooted target or -File script path does not exist on disk.</summary>
+    public void EnsureTargetExists()
+    {
+        if (this.Kind == LaunchKind.Uri)
+        {
+            return;
+        }
+
+        if (Path.IsPathRooted(this.Target) && !File.Exists(this.Target) && !Directory.Exists(this.Target))
+        {
+            throw new FileNotFoundException($"Target not found: {this.Target}", this.Target);
+        }
+
+        if (!string.IsNullOrEmpty(this.Arguments))
+        {
+            var m = FileArg.Match(this.Arguments);
+            if (m.Success)
+            {
+                var script = m.Groups[1].Value;
+                if (Path.IsPathRooted(script) && !File.Exists(script))
+                {
+                    throw new FileNotFoundException($"Script not found: {script}", script);
+                }
+            }
+        }
+    }
+}
 
 public sealed record GoToPageStep(int Page) : PlannedStep;
 

@@ -62,6 +62,7 @@ public class PlanningTests
         Assert.Equal(LaunchKind.Program, step.Kind);
         Assert.Equal("pwsh.exe", step.Target);
         Assert.Equal("-NoProfile -ExecutionPolicy Bypass -File \"C:\\Forge\\tools\\go.ps1\"", step.Arguments);
+        Assert.Throws<FileNotFoundException>(() => step.EnsureTargetExists());
     }
 
     [Fact]
