@@ -94,16 +94,24 @@ const ok = (name, cond, extra = '') => {
   const pathsCount = await page.locator('.path-row').count();
   ok('paths drawer opens and lists variables', pathsDrawerOpen && pathsCount >= 5, `paths count: ${pathsCount}`);
 
-  // 8. Secret validation refusal
+  // 8. Secret and invalid-step validation refusal
   await page.fill('#btn-label-input', 'Secret Key');
   const lastRowInput = page.locator('#step-list .step-row').last().locator('input');
   await lastRowInput.fill('gsk_12345678901234567890');
 
   const problems = await page.evaluate(() => window.__EDITOR.validateLayout());
-  ok('secret pattern in step is refused by validation', problems.some(p => p.includes('API key or password')), problems.join('; '));
+  await lastRowInput.fill('Cmd+C');
+  const modProblems = await page.evaluate(() => window.__EDITOR.validateLayout());
+  await lastRowInput.fill('');
+  const emptyProblems = await page.evaluate(() => window.__EDITOR.validateLayout());
+  ok('secret pattern in step is refused by validation',
+    problems.some(p => p.includes('API key or password')) &&
+    modProblems.some(p => p.includes("unknown modifier 'Cmd'")) &&
+    emptyProblems.some(p => p.includes('value is empty')),
+    problems.join('; '));
 
   // Reset to valid step
-  await lastRowInput.fill('echo valid');
+  await lastRowInput.fill('Ctrl+K');
 
   // 9. AI Assist test (mock endpoint)
   let seenAiReq = null;
@@ -145,7 +153,7 @@ const ok = (name, cond, extra = '') => {
   const dlPath = path.join(require('os').tmpdir(), 'downloaded-keys.yaml');
   await download.saveAs(dlPath);
   const exportedYaml = fs.readFileSync(dlPath, 'utf8');
-  ok('saving layout exports valid YAML file with paths and pages', exportedYaml.includes('profile_name:') && exportedYaml.includes('paths:') && exportedYaml.includes('AI Made'));
+  ok('saving layout exports valid YAML file with paths and pages', exportedYaml.includes('profile_name:') && exportedYaml.includes('paths:') && exportedYaml.includes('icon:') && exportedYaml.includes('dials:') && exportedYaml.includes('AI Made'));
   fs.unlinkSync(dlPath);
 
   // Check no unexpected console/page errors

@@ -312,10 +312,12 @@
       let activeButtonIndex = 0; // 0-8
       let model = {
         profile_name: "MX 10-Page Layout",
+        profile_id: "",
         profile_page_count: 10,
         text_mode: "type",
         paths: {},
-        pages: []
+        pages: [],
+        dials: null
       };
 
       // AI Settings (persisted in localStorage)
@@ -345,6 +347,7 @@
             buttons: Array.from({ length: 9 }, (_, id) => ({
               id,
               label: "",
+              icon: "",
               color: "",
               text_mode: "",
               steps: []
@@ -368,25 +371,102 @@
         return SECRET_PATTERNS.some(rx => rx.test(str));
       }
 
+      const VALID_MODS = new Set(["ctrl", "control", "shift", "alt", "win", "windows"]);
+      const EXPANDED_STEPS = new Set(["text", "url", "open", "run"]);
+      const PATH_REF_RX = /\$\{([^}]*)\}/g;
+
+      function resolvePaths(rawPaths, problems) {
+        const raw = rawPaths || {};
+        const valid = {};
+        const done = {};
+        for (const [k, v] of Object.entries(raw)) {
+          if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) {
+            problems.push(`paths: '${k}' is not a valid name (letters, digits, _).`);
+          } else if (v === null || v === undefined || String(v).trim() === "") {
+            problems.push(`paths: ${k} needs a text value.`);
+          } else {
+            valid[k] = String(v);
+          }
+        }
+        function solve(name, stack) {
+          if (Object.prototype.hasOwnProperty.call(done, name)) return done[name];
+          if (stack.includes(name)) {
+            throw new Error(`paths: ${[...stack, name].join(" -> ")} refers to itself.`);
+          }
+          if (!Object.prototype.hasOwnProperty.call(valid, name)) {
+            const err = new Error(name);
+            err.missing = true;
+            throw err;
+          }
+          const nextStack = [...stack, name];
+          const out = valid[name].replace(PATH_REF_RX, (_, ref) => solve(ref, nextStack));
+          done[name] = out;
+          return out;
+        }
+        for (const k of Object.keys(valid)) {
+          try {
+            solve(k, []);
+          } catch (e) {
+            if (e.missing) {
+              problems.push(`paths: ${k} uses \${${e.message}}, which is not defined.`);
+            } else if (!problems.includes(e.message)) {
+              problems.push(e.message);
+            }
+          }
+        }
+        return done;
+      }
+
       function validateLayout() {
         const problems = [];
         if (!model.profile_name) problems.push("Layout name is required.");
         const pc = Number(model.profile_page_count);
         if (!Number.isInteger(pc) || pc < 1 || pc > 10) problems.push("Page count must be 1 to 10.");
 
+        const resolvedPaths = resolvePaths(model.paths, problems);
         for (const [k, v] of Object.entries(model.paths || {})) {
-          if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) problems.push(`Path variable '${k}' has an invalid name.`);
-          if (hasSecret(v)) problems.push(`Path variable '${k}' looks like a secret / password.`);
+          if (hasSecret(v) || hasSecret(resolvedPaths[k])) {
+            problems.push(`Path variable '${k}' looks like a secret / password.`);
+          }
         }
 
-        model.pages.forEach((page, pi) => {
+        const activePages = model.pages.slice(0, Number.isInteger(pc) && pc >= 1 ? pc : model.pages.length);
+        activePages.forEach((page, pi) => {
           page.buttons.forEach((btn, bi) => {
             const where = `Page ${pi + 1} Key ${bi}`;
             if (btn.color && !/^#[0-9A-Fa-f]{6}$/.test(btn.color)) problems.push(`${where}: color must look like #1F4E8C.`);
             (btn.steps || []).forEach((st, si) => {
-              if (hasSecret(st.value)) problems.push(`${where} Step ${si + 1}: looks like an API key or password.`);
+              const rawVal = String(st.value ?? "");
+              if (rawVal.trim() === "") {
+                problems.push(`${where} Step ${si + 1} (${st.type}): value is empty.`);
+                return;
+              }
+              let expandedVal = rawVal;
+              if (EXPANDED_STEPS.has(st.type)) {
+                for (const m of rawVal.matchAll(PATH_REF_RX)) {
+                  const ref = m[1];
+                  if (!Object.prototype.hasOwnProperty.call(resolvedPaths, ref) &&
+                      !(model.paths && Object.prototype.hasOwnProperty.call(model.paths, ref))) {
+                    problems.push(`${where} Step ${si + 1}: \${${ref}} is not in paths.`);
+                  }
+                }
+                expandedVal = rawVal.replace(PATH_REF_RX, (full, ref) =>
+                  Object.prototype.hasOwnProperty.call(resolvedPaths, ref) ? resolvedPaths[ref] : full
+                );
+              }
+              if (hasSecret(rawVal) || hasSecret(expandedVal)) {
+                problems.push(`${where} Step ${si + 1}: looks like an API key or password.`);
+              }
+              if (st.type === "key") {
+                const combo = rawVal.trim();
+                const parts = combo === "+" ? ["+"] : combo.split("+").map(p => p.trim()).filter(Boolean);
+                const badMods = parts.slice(0, -1).filter(p => !VALID_MODS.has(p.toLowerCase()));
+                if (badMods.length > 0) {
+                  problems.push(`${where} Step ${si + 1}: unknown modifier '${badMods.join("+")}' (use Ctrl, Shift, Alt, Win).`);
+                }
+              }
               if (st.type === "go_to_page") {
-                const target = Number(st.value);
+                const target = Number(rawVal);
                 if (!Number.isInteger(target) || target < 1 || target > model.profile_page_count) {
                   problems.push(`${where}: go_to_page ${target} is out of range 1..${model.profile_page_count}.`);
                 }
@@ -395,8 +475,10 @@
                 }
               }
               if (st.type === "wait") {
-                const w = Number(st.value);
-                if (!Number.isInteger(w) || w < 0) problems.push(`${where}: wait must be 0 or more.`);
+                const w = Number(rawVal);
+                if (!Number.isInteger(w) || w < 0 || w > 600000) {
+                  problems.push(`${where}: wait must be 0..600000 ms.`);
+                }
               }
             });
           });
@@ -406,10 +488,13 @@
 
       function exportToYaml() {
         const out = {
-          profile_name: model.profile_name || "MX 10-Page Layout",
-          profile_page_count: Number(model.profile_page_count) || 10,
-          text_mode: model.text_mode || "type"
+          profile_name: model.profile_name || "MX 10-Page Layout"
         };
+        if (model.profile_id) {
+          out.profile_id = model.profile_id;
+        }
+        out.profile_page_count = Number(model.profile_page_count) || 10;
+        out.text_mode = model.text_mode || "type";
         if (model.paths && Object.keys(model.paths).length > 0) {
           out.paths = { ...model.paths };
         }
@@ -418,6 +503,7 @@
           pg.buttons.forEach((b, bi) => {
             if (!b.steps || b.steps.length === 0) return;
             const bEntry = { id: bi, label: b.label || "" };
+            if (b.icon) bEntry.icon = b.icon;
             if (b.color) bEntry.color = b.color;
             if (b.text_mode) bEntry.text_mode = b.text_mode;
             bEntry.steps = b.steps.map(s => {
@@ -428,6 +514,9 @@
           });
           out["page_" + (pi + 1)] = pageObj;
         });
+        if (model.dials && typeof model.dials === "object" && Object.keys(model.dials).length > 0) {
+          out.dials = { ...model.dials };
+        }
         return jsyaml.dump(out, { lineWidth: -1, noRefs: true, quotingType: '"', forceQuotes: true });
       }
 
@@ -435,9 +524,11 @@
         const doc = jsyaml.load(yamlText);
         if (!doc || typeof doc !== "object") throw new Error("Invalid YAML structure");
         model.profile_name = doc.profile_name || "MX 10-Page Layout";
+        model.profile_id = doc.profile_id ? String(doc.profile_id) : "";
         model.profile_page_count = Number(doc.profile_page_count) || 10;
         model.text_mode = doc.text_mode || "type";
         model.paths = (doc.paths && typeof doc.paths === "object") ? { ...doc.paths } : {};
+        model.dials = (doc.dials && typeof doc.dials === "object") ? { ...doc.dials } : null;
         model.pages = [];
 
         for (let p = 1; p <= model.profile_page_count; p++) {
@@ -445,7 +536,7 @@
           const page = {
             name: pSrc.name || ("Page " + p),
             buttons: Array.from({ length: 9 }, (_, id) => ({
-              id, label: "", color: "", text_mode: "", steps: []
+              id, label: "", icon: "", color: "", text_mode: "", steps: []
             }))
           };
           (pSrc.buttons || []).forEach(b => {
@@ -453,6 +544,7 @@
             if (Number.isInteger(id) && id >= 0 && id <= 8) {
               const btn = page.buttons[id];
               btn.label = b.label || "";
+              btn.icon = b.icon || "";
               btn.color = b.color || "";
               btn.text_mode = b.text_mode || "";
               btn.steps = (b.steps || []).map(s => {
@@ -860,6 +952,7 @@
       document.getElementById("btn-clear-key").onclick = () => {
         const btn = model.pages[activePageIndex].buttons[activeButtonIndex];
         btn.label = "";
+        btn.icon = "";
         btn.color = "";
         btn.text_mode = "";
         btn.steps = [];
@@ -1087,7 +1180,8 @@
       document.getElementById("btn-save-file").onclick = saveToFile;
       document.getElementById("btn-export-download").onclick = () => {
         const probs = validateLayout();
-        if (probs.length > 0 && !confirm("Validation warnings:\n• " + probs.join("\n• ") + "\n\nDownload anyway?")) {
+        if (probs.length > 0) {
+          alert("Please fix these issues before downloading:\n\n• " + probs.join("\n• "));
           return;
         }
         downloadFile("keys.yaml", exportToYaml());
