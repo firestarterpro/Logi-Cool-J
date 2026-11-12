@@ -1,7 +1,7 @@
 # logi-cool-j: finish report (final)
 
 Written 2026-11-11 by Claude Code (Sonnet 5.5), working from `CLAUDE_CODE_FINISH.md`.
-**Status: all units done (Track A, B1-B5, Finish).** The owner tests on the device next. The C# xUnit tests compile but have never run (Smart App Control, below), and B5 was not tested.
+**Status: all units done (Track A, B1-B5, Finish).** The owner tests on the device next. Follow-up on 2026-11-12: Smart App Control is now off and the C# xUnit tests ran, 44 of 44 passed (see "C# tests now run" below).
 
 The owner changed the process on 2026-11-11: one unit per session; no per-session subagent review (one review of the whole diff happens afterward, outside these sessions); large files such as `logi-cool-j-builder.html` are searched with grep, never read whole.
 
@@ -35,7 +35,7 @@ The owner changed the process on 2026-11-11: one unit per session; no per-sessio
   - `LogiCoolJ.Core` (no SDK dependency): `KeysLoader` (YamlDotNet; every problem has a line, page and key), `PathVariables`, `SecretPatterns`, `KeyCombo`, `StepPlanner`, `StepRunner` (one macro at a time; a failing step stops that macro and is reported), `LayoutHost` (file watcher + 2 s poll, 400 ms debounce, swaps only a valid file, keeps the last good layout), `SlotPresenter` (error on the failing key or key 1; pressing it dismisses it), `KeysLocator`.
   - `LogiCoolJPlugin`: `SlotCommand` with 108 parameters (`k0..k8` follow the plugin's current page; `p01k0..p10k8` fixed; `t0..t8` read `device-test.yaml`), `StatusCommand`, `PageCommand`. `-p:SlotForm=Actions` builds one class per slot. Keys go through `ClientApplication.SendKeyboardShortcut`, text through `NativeMethods.SendString`, paste through the SDK clipboard (old clipboard text restored), programs through `Process.Start`. Errors also go to the plugin status and a Windows balloon. The current page is saved as a plugin setting.
   - Install safety: the `.link` and reload step run only with `-p:LinkToPluginService=true`. After building, nothing had been written to the Plugin Service folder.
-  - About 45 xUnit cases written (loader, planning, runner, host, presenter, slot names, key names checked against the real SDK enums); never run.
+  - About 45 xUnit cases written (loader, planning, runner, host, presenter, slot names, key names checked against the real SDK enums); first run on 2026-11-12: 44 passed.
 - **B3 slot profiles and installer.** `yaml2lp5.py --slots` writes `slots.lp5` (1 page, `k0..k8` virtual paging), `slots-actions.lp5` (1 page, `KeyK0..KeyK8`) and `slots-10pages.lp5` (10 pages, fixed slots, `go_to_page` as native `ChangeTouchPage`), into `lp5-build\` and `v2\`. `v2\Install-Plugin.ps1` (not run) restores the tool, builds with `LinkToPluginService=true` (options `-SlotForm`, `-KeysPath`), packs and verifies `v2\dist\LogiCoolJ.lplug4`, refreshes the profiles, runs `logiplugintool install`, falls back to opening the `.lplug4`. `logiplugintool pack` and `verify` were run offline and passed.
 - **B4 editor** (`v2\editor\keys-editor.html`): 3x3 grid with page tabs, one panel per key, quick picks (App, Website, Shortcut recorder, Text, Script, Folder, Path variable, Go to page), paths drawer, shared AI box, saves with the File System Access API (download fallback). `tests\test-keys-editor.js` (15 tests) also runs from `tests\ui-smoke.js`.
 - **B5 device test page** (`v2\device-test.yaml`, `v2\device-test.lp5`): nine keys, one per step type: 0 Notepad (`open`; press first), 1 Arrows (Notepad should read `aLUbR` / `cdD`), 2 Backtick, 3 Media (PlayPause, wait, PlayPause), 4 Text+Wait, 5 Paste, 6 URL, 7 Run file (README.md), 8 GoTo 1 (no visible change, no error). The same file serves the native route (`device-test.lp5`) and the plugin route (`t0..t8`); a key that works in only one names the key spelling to fix. The converter lists the unconfirmed names: Down, Left, Right, Up, `` ` ``, MediaPlayPause.
@@ -44,11 +44,14 @@ The owner changed the process on 2026-11-11: one unit per session; no per-sessio
 ## Verified versus device-only
 **Ran and passed at `4468361`:** Python tests 40/40 (`python -m unittest discover -s tests`); UI tests 65/65 (50 builder + 15 v2 editor, `node tests\ui-smoke.js`); C# build `dotnet build v2\LogiCoolJ.sln -c Release` with 0 warnings and 0 errors (both slot forms). Also run in earlier units: the converter on the real layout and `--slots`, `migrate_keys.py`, `--check` on both layouts, `logiplugintool pack` and `verify`, a PowerShell syntax check of `Install-Plugin.ps1`, every `open`/`run` path checked on disk.
 
-**Not tested:** B5 (`f99ef93`) and this Finish commit: nothing was run after `4468361`, on the owner's instruction. `device-test.yaml` was only checked with `--check` and built; the plugin loading it was not exercised. **The C# xUnit tests have never run** (blocked, below).
+**Not tested:** B5 (`f99ef93`) and this Finish commit: nothing was run after `4468361`, on the owner's instruction. `device-test.yaml` was only checked with `--check` and built; the plugin loading it was not exercised. The C# xUnit tests were blocked at that time; they ran later (below).
 
 **Device-only (cannot be tested here):** whether Options+ accepts the imported `.lp5` files; `Install-Plugin.ps1` and the Plugin Service loading the plugin DLLs; live label updates; virtual paging; typed text in the browser and in Cursor; pwsh-with-arguments keys; arrow, backtick and media key names; the Claude and Ref Drafts launch commands; AI endpoint CORS against a real local server.
 
-## Smart App Control blocks the C# test DLL
+## C# tests now run (2026-11-12)
+Smart App Control is off (the owner turned it off). `dotnet test v2\LogiCoolJ.sln -c Release` built with no errors and the test DLL loaded: **44 passed, 0 failed, 0 skipped** (324 ms). No code or test needed fixing. A first attempt, right after a Windows update restart, failed with `MSB6006: csc.dll exited with code -1073741502` (0xC0000142, the compiler process could not start); it passed on the next run with nothing changed. Whether the Plugin Service may load the plugin DLLs is still device-only.
+
+### History: Smart App Control blocked the C# test DLL (2026-11-11)
 Smart App Control is in enforce mode on this PC (`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState = 1`; Code Integrity events 3033/3077/3118). It blocked the xUnit test DLL ("An Application Control policy has blocked this file", 0x800711C7), also after a rebuild under another name. Verdicts are per file: `LogiCoolJPlugin.dll` and `LogiCoolJ.Core.dll` did load in pwsh, but whether the Plugin Service may load them is device-only. Nothing was changed; turning Smart App Control off is the owner's decision, and on Windows 11 it cannot be turned back on without resetting Windows. Options: run the C# tests on a machine without enforcement, sign the DLLs, or decide about SAC. Python and Playwright tests are unaffected.
 
 ## Decisions
@@ -73,7 +76,7 @@ Smart App Control is in enforce mode on this PC (`HKLM\SYSTEM\CurrentControlSet\
 - Options+ assigns its own IDs on import, so a re-import adds a second profile instead of replacing the first. The README now says so.
 - The Gateway exe was briefly missing during one session; the key keeps the exact path as instructed. Ref Drafts uses the dev `electron.exe` until it has a portable build.
 - Saving from `keys-editor.html` rewrites `keys.yaml` and drops its comments.
-- Smart App Control: see above.
+- Smart App Control: turned off by the owner on 2026-11-12 (see below); no longer an issue for the C# tests.
 
 ## Rollback
 ```
