@@ -379,13 +379,13 @@ page_7:
       icon: "brain"
       steps:
         # EDIT: confirmed folder exists under Templar Archives — set full path
-        - open: "C:\\Templar Archives\\ai-control-center"
+        - open: "C:\\Templar Archives\\Cybernetics Core\\ai-control-center"
     - id: 3
       label: "BeerLeague"
       icon: "basketball"
       steps:
         # EDIT: confirmed folder exists under Templar Archives — set full path
-        - open: "C:\\Templar Archives\\Basketball Bro\\beer-league"
+        - open: "C:\\Templar Archives\\Arbiter Tribunal\\beer-league"
     - id: 4
       label: "LLMExplorer"
       icon: "rocket"
@@ -396,7 +396,7 @@ page_7:
       icon: "image"
       steps:
         # EDIT: confirmed folder exists under Templar Archives — set full path
-        - open: "C:\\Templar Archives\\My Apps\\html-render"
+        - open: "C:\\Templar Archives\\Forge\\html-render"
     - id: 6
       label: "logi"
       icon: "keyboard"
@@ -564,7 +564,7 @@ page_10:
       icon: "sync"
       steps:
         # EDIT: path inferred from your old profile — verify before use
-        - run: "C:\\Templar Archives\\Basketball Bro\\beer-league\\sync\\Start Sync Console.bat"
+        - run: "C:\\Templar Archives\\Arbiter Tribunal\\beer-league\\sync\\Start Sync Console.bat"
     - id: 8
       label: "Home"
       icon: "home"

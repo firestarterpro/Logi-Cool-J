@@ -36,12 +36,12 @@ page_1:
       label: "Open DL"
       icon: "download"
       steps:
-        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action OpenDownload"
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\Cybernetics Core\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action OpenDownload"
     - id: 1
       label: "Open Clip"
       icon: "clipboard"
       steps:
-        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action OpenClipboard"
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\Cybernetics Core\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action OpenClipboard"
     - id: 2
       label: "Run Script"
       icon: "play"
@@ -52,12 +52,12 @@ page_1:
       label: "Copy Result"
       icon: "copy"
       steps:
-        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action Copy"
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\Cybernetics Core\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action Copy"
     - id: 4
       label: "Recycle Run"
       icon: "recycle"
       steps:
-        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action Recycle"
+        - open: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\Templar Archives\\Cybernetics Core\\stacks-attacks\\tools\\ai-scripts\\AiScript.ps1\" -Action Recycle"
     - id: 5
       label: "Ask Cursor"
       icon: "robot"
@@ -103,13 +103,13 @@ page_2:
       label: "AI Control"
       icon: "brain"
       steps:
-        - open: "C:\\Templar Archives\\ai-control-center\\app\\dist\\AI Control Center.exe"
+        - open: "C:\\Templar Archives\\Cybernetics Core\\ai-control-center\\app\\dist\\AI Control Center.exe"
     - id: 3
       label: "Ref Drafts"
       icon: "whistle"
       steps:
         # The portable build (npm run package); no arguments needed.
-        - open: "C:\\Templar Archives\\Basketball Bro\\Ref Text Confirm\\pc-only-ref-drafts\\dist\\RefDrafts-win32-x64\\RefDrafts.exe"
+        - open: "C:\\Templar Archives\\Arbiter Tribunal\\Ref Text Confirm\\pc-only-ref-drafts\\dist\\RefDrafts-win32-x64\\RefDrafts.exe"
     - id: 4
       label: "DeepSeek"
       icon: "deepseek"
@@ -445,12 +445,12 @@ page_8:
       icon: "sync"
       steps:
         # Beer League sync console (moved here from Index)
-        - run: "C:\\Templar Archives\\Basketball Bro\\beer-league\\sync\\Start Sync Console.bat"
+        - run: "C:\\Templar Archives\\Arbiter Tribunal\\beer-league\\sync\\Start Sync Console.bat"
     - id: 3
       label: "BeerLeague"
       icon: "basketball"
       steps:
-        - open: "C:\\Templar Archives\\Basketball Bro\\beer-league"
+        - open: "C:\\Templar Archives\\Arbiter Tribunal\\beer-league"
     - id: 4
       label: "LLMExplorer"
       icon: "rocket"
@@ -460,13 +460,13 @@ page_8:
       label: "HTMLRender"
       icon: "image"
       steps:
-        - open: "C:\\Templar Archives\\My Apps\\html-render"
+        - open: "C:\\Templar Archives\\Forge\\html-render"
     - id: 6
       label: "LogiCoolJ"
       icon: "keyboard"
       steps:
         # this project (replaces the old "logi scripts" folder)
-        - open: "C:\\Templar Archives\\My Apps\\Logi.Cool.J"
+        - open: "C:\\Templar Archives\\Forge\\Logi.Cool.J"
     - id: 7
       label: "Options+"
       icon: "gear"

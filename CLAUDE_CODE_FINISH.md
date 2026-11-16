@@ -3,7 +3,7 @@
 Written 2026-11-11 by Claude (chat) from the files in this folder and the v2 spec agreed on 2026-11-07. Run it start to finish in one or more sessions. The owner tests on the console afterward.
 
 ## Where things stand
-- Folder: `C:\Templar Archives\My Apps\Logi.Cool.J`. No git repo yet.
+- Folder: `C:\Templar Archives\Forge\Logi.Cool.J`. No git repo yet.
 - v1 works as a pipeline: `logi-cool-j-builder.html` (Keypad Layout Studio) writes `lp5-build\keypad-layout.yaml`, `lp5-build\yaml2lp5.py` turns it into a `.lp5`, and the owner imports that in Logi Options+. Read `README.md` and `lp5-build\HANDOUT-keypad-addon.md` (the YAML contract) first.
 - A 10-page, 9-key layout exists. Whether it was ever imported on the MX Creative Console is not confirmed.
 - You cannot see or press the console and you cannot click in Options+. So build both tracks below to the point where the owner's first test is one import and a few key presses, and where a failed check already has its fallback built.
@@ -16,14 +16,14 @@ Written 2026-11-11 by Claude (chat) from the files in this folder and the v2 spe
 5. Say in the report what you actually ran versus only wrote, and which behaviors can only be confirmed on the device.
 6. No secrets in any layout: the checker refuses API keys and passwords (HANDOUT rule 4).
 7. Allowed new dependencies: the Logi Actions SDK and its `logiplugintool`, a YAML library for .NET, xUnit, and the existing Python and Playwright needs. Check Logitech's current SDK documentation online before writing plugin code; do not rely on memory for its API.
-8. Owner conventions: PowerShell 7 (`pwsh`); scripts do the job when run (no dry-run or `$Apply` switch); doc commands on one line; `.ps1` files always run through `pwsh` and never open in Notepad. Read `C:\Templar Archives\stacks-attacks\INSTRUCTIVE_STACK.md` if it exists and follow it where it does not conflict with rule 1.
+8. Owner conventions: PowerShell 7 (`pwsh`); scripts do the job when run (no dry-run or `$Apply` switch); doc commands on one line; `.ps1` files always run through `pwsh` and never open in Notepad. Read `C:\Templar Archives\Cybernetics Core\stacks-attacks\INSTRUCTIVE_STACK.md` if it exists and follow it where it does not conflict with rule 1.
 9. If budget runs low: finish the current unit, commit, write the report, stop. A later session resumes at the first unfinished unit in `FINISH_REPORT.md`.
 
 ## Track A: make today's profile right (works without the plugin)
 **A1 Layout refresh.** Copy `keypad-layout.yaml` to `keypad-layout.v1-backup.yaml`, then:
 - Fix the stale header comment (it still mentions `build-json.ps1`) and the stale keys `logi scripts` and AIControl.
 - Check that every `open` and `run` path exists on this PC; fix or flag each miss.
-- Make page 1 the AI Scripts page: Run script, Open script first, Copy results, Recycle last run, plus Open download, Open clipboard and Ask Cursor. Take the exact commands from `C:\Templar Archives\stacks-attacks\tools\ai-scripts\` (`AiScript.ps1` and the Cursor task files).
+- Make page 1 the AI Scripts page: Run script, Open script first, Copy results, Recycle last run, plus Open download, Open clipboard and Ask Cursor. Take the exact commands from `C:\Templar Archives\Cybernetics Core\stacks-attacks\tools\ai-scripts\` (`AiScript.ps1` and the Cursor task files).
 - Keep 10 pages of 9 keys. To make room, fold the page with the fewest still-useful keys into Home and Index and list what moved.
 - Add keys for The Gateway (`open` on `C:\Templar Archives\Templar Nexus\dist\TheGateway\TheGateway.exe` directly, because Options+ will not launch it from a saved shortcut), AI Control Center, Ref Drafts and Claude.
 

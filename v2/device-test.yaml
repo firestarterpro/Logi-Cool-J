@@ -20,7 +20,7 @@ profile_page_count: 1
 text_mode: "type"
 
 paths:
-  logi_cool_j: "C:\\Templar Archives\\My Apps\\Logi.Cool.J"
+  logi_cool_j: "C:\\Templar Archives\\Forge\\Logi.Cool.J"
 
 page_1:
   name: "Device Test"

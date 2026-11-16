@@ -47,7 +47,7 @@ logi-cool-j-builder.html  ->  lp5-build\keypad-layout.yaml  ->  yaml2lp5.py  -> 
 
 ### The AI Scripts page (page 1)
 
-Open DL, Open Clip, Copy Result and Recycle Run run `AiScript.ps1` from `C:\Templar Archives\stacks-attacks\tools\ai-scripts\` through `pwsh.exe -WindowStyle Hidden`. Run Script is Ctrl+Alt+Shift+R (the Cursor task), Ask Cursor is Ctrl+L, To Cursor opens Cursor. The script must exist locally: run `stacks-attacks-pull.bat` first if the folder is empty.
+Open DL, Open Clip, Copy Result and Recycle Run run `AiScript.ps1` from `C:\Templar Archives\Cybernetics Core\stacks-attacks\tools\ai-scripts\` through `pwsh.exe -WindowStyle Hidden`. Run Script is Ctrl+Alt+Shift+R (the Cursor task), Ask Cursor is Ctrl+L, To Cursor opens Cursor. The script must exist locally: run `stacks-attacks-pull.bat` first if the folder is empty.
 
 ### AI assist (builder and v2 editor)
 
@@ -114,13 +114,13 @@ python lp5-build\yaml2lp5.py --slots v2\keys.yaml v2
 `Install-Plugin.ps1` restores the local `LogiPluginTool`, builds Release, packs and verifies `v2\dist\LogiCoolJ.lplug4`, refreshes the three slot profiles, installs through `logiplugintool`, and falls back to opening the `.lplug4`. Run it only when you want the plugin installed (it changes your Logi Plugin Service); `.ps1` files run through `pwsh`:
 
 ```
-pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\Templar Archives\My Apps\Logi.Cool.J\v2\Install-Plugin.ps1"
+pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\Templar Archives\Forge\Logi.Cool.J\v2\Install-Plugin.ps1"
 ```
 
 One class per slot instead:
 
 ```
-pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\Templar Archives\My Apps\Logi.Cool.J\v2\Install-Plugin.ps1" -SlotForm Actions
+pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\Templar Archives\Forge\Logi.Cool.J\v2\Install-Plugin.ps1" -SlotForm Actions
 ```
 
 A plain `dotnet build v2\LogiCoolJ.sln -c Release` installs nothing; linking into the Plugin Service happens only with `-p:LinkToPluginService=true`, which the installer sets. After installing, import `v2\slots.lp5` in Options+.

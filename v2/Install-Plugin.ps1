@@ -1,6 +1,6 @@
 # Installs the Logi Cool J plugin into the Logi Plugin Service and packs/verifies LogiCoolJ.lplug4.
-# Run in PowerShell 7:  pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\Templar Archives\My Apps\Logi.Cool.J\v2\Install-Plugin.ps1"
-# For the one-class-per-slot fallback:  pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\Templar Archives\My Apps\Logi.Cool.J\v2\Install-Plugin.ps1" -SlotForm Actions
+# Run in PowerShell 7:  pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\Templar Archives\Forge\Logi.Cool.J\v2\Install-Plugin.ps1"
+# For the one-class-per-slot fallback:  pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\Templar Archives\Forge\Logi.Cool.J\v2\Install-Plugin.ps1" -SlotForm Actions
 
 param(
     [ValidateSet("Parameters", "Actions")]
