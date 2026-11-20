@@ -2487,8 +2487,8 @@ $("kp-build-lp5").addEventListener("click", async () => {
   outBox.hidden = false;
   const configured = ap.pages.reduce((acc, p) => acc + p.buttons.filter(b => b.steps?.length).length, 0);
   const cmd = res.picked
-    ? `cd /d "C:\\Templar Archives\\My Apps\\Logi.Cool.J\\lp5-build"\npython yaml2lp5.py\n(Saved elsewhere? python yaml2lp5.py "<full path to ${res.where}>")`
-    : `cd /d "C:\\Templar Archives\\My Apps\\Logi.Cool.J\\lp5-build"\npython yaml2lp5.py "%USERPROFILE%\\Downloads\\keypad-layout.yaml"`;
+    ? `cd /d "C:\\Templar Archives\\Forge\\Logi.Cool.J\\lp5-build"\npython yaml2lp5.py\n(Saved elsewhere? python yaml2lp5.py "<full path to ${res.where}>")`
+    : `cd /d "C:\\Templar Archives\\Forge\\Logi.Cool.J\\lp5-build"\npython yaml2lp5.py "%USERPROFILE%\\Downloads\\keypad-layout.yaml"`;
   outBox.textContent =
 `📦 Saved keypad-layout.yaml to ${res.where} (${ap.pages.length} pages, ${configured} configured buttons).
 Run in a terminal (lp5-build folder, next to yaml2lp5.py + template.lp5):
