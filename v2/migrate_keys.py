@@ -22,15 +22,15 @@ import yaml2lp5 as conv  # noqa: E402
 # name -> value. Values may use ${other}; order matters only for the written file.
 DEFAULT_PATHS = [
     ("templar", r"C:\Templar Archives"),
-    ("ai_scripts", r"${templar}\stacks-attacks\tools\ai-scripts"),
+    ("ai_scripts", r"${templar}\Cybernetics Core\stacks-attacks\tools\ai-scripts"),
     ("gateway", r"${templar}\Templar Nexus\dist\TheGateway\TheGateway.exe"),
-    ("ai_control_center", r"${templar}\ai-control-center\app\dist\AI Control Center.exe"),
-    ("ref_drafts", r"${templar}\Basketball Bro\Ref Text Confirm\pc-only-ref-drafts"),
-    ("beer_league", r"${templar}\Basketball Bro\beer-league"),
+    ("ai_control_center", r"${templar}\Cybernetics Core\ai-control-center\app\dist\AI Control Center.exe"),
+    ("ref_drafts", r"${templar}\Arbiter Tribunal\Basketball Officiating\On the Whistle\Ref Text Confirm\pc-only-ref-drafts"),
+    ("beer_league", r"${templar}\Arbiter Tribunal\beer-league"),
     ("html_render", r"${templar}\Forge\html-render"),
     ("logi_cool_j", r"${templar}\Forge\Logi.Cool.J"),
     ("cursor", r"C:\Users\kcorn\AppData\Local\Programs\Cursor\Cursor.exe"),
-    ("llm_explorer", r"C:\llm-explorer"),
+    ("llm_explorer", r"${templar}\Cybernetics Core\llm-explorer"),
     ("documents", r"C:\Users\kcorn\OneDrive\Documents"),
     ("options_plus", r"C:\Program Files\LogiOptionsPlus\logioptionsplus.exe"),
 ]

@@ -109,7 +109,7 @@ page_2:
       icon: "whistle"
       steps:
         # The portable build (npm run package); no arguments needed.
-        - open: "C:\\Templar Archives\\Arbiter Tribunal\\Ref Text Confirm\\pc-only-ref-drafts\\dist\\RefDrafts-win32-x64\\RefDrafts.exe"
+        - open: "C:\\Templar Archives\\Arbiter Tribunal\\Basketball Officiating\\On the Whistle\\Ref Text Confirm\\pc-only-ref-drafts\\dist\\RefDrafts-win32-x64\\RefDrafts.exe"
     - id: 4
       label: "DeepSeek"
       icon: "deepseek"
@@ -455,7 +455,7 @@ page_8:
       label: "LLMExplorer"
       icon: "rocket"
       steps:
-        - open: "C:\\llm-explorer"
+        - open: "C:\\Templar Archives\\Cybernetics Core\\llm-explorer"
     - id: 5
       label: "HTMLRender"
       icon: "image"
