@@ -103,7 +103,7 @@ page_2:
       label: "AI Control"
       icon: "brain"
       steps:
-        - open: "C:\\Templar Archives\\Cybernetics Core\\ai-control-center\\app\\dist\\AI Control Center.exe"
+        - open: "C:\\Templar Archives\\Observatory\\observatory\\app\\dist\\Observatory.exe"
     - id: 3
       label: "Ref Drafts"
       icon: "whistle"
